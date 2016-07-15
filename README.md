@@ -224,6 +224,17 @@ console with information about what has changed.
 To watch for changes on the FPGA pins, run the "activity" application
 which reads the edge counters from the FPGA.
 
+Synthesizing MyHDL code with ISE
+================================
+
+Sometimes it can be useful to use ISE to synthesize an image from
+sds7102.v and sds7102.ucf created by image.py.  There is an ISE
+project in fpga/ise/wishbone with symlinks to the MyHDL generated
+files.  After running "image.py" to generate those files, open
+the ise/wishbone project in ISE and synthesize the normal way.
+This way you can look at the floorplan and other things that are
+hard to do outside of ISE.
+
 Device Drivers and Applications
 ===============================
 

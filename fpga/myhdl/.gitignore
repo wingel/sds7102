@@ -1,0 +1,6 @@
+*.vcd
+*.vcd.*
+*.v
+*.pyc
+*.pyo
+xilinx

@@ -43,44 +43,68 @@ Dependencies
 This project depends on a couple of other projects.  The biggest ones
 are the following:
 
-* A Linux distribution and all the tools that comes with it.  I'm
-  using Linux Mint 17.3, but any modern distribution should do.
-  You'll have to install this on your own and make sure that gcc,
-  make, git and some other things are installed.  I don't know exactly
-  what is needed but the build will fail and you'll have to figure it
-  out if that happens.
+ * A Linux distribution and all the tools that comes with it.  I'm
+   using Linux Mint 17.3, but any modern distribution should do.
+   You'll have to install this on your own and make sure that gcc,
+   make, git and some other things are installed.  I don't know
+   exactly what is needed but the build will fail and you'll have to
+   figure it out if that happens.
 
-* You will need about 5.5 gigabytes of free disk space.  About 2.5
-  gigabytes for buildroot, 2.5 gigabytes for the Linux kernel and
-  couple of hundred megabytes for all the rest, downloads in the dl
-  directory, myhdl, rhea and a few more things.
+ * You will need about 5.5 gigabytes of free disk space.  About 2.5
+   gigabytes for buildroot, 2.5 gigabytes for the Linux kernel and
+   couple of hundred megabytes for all the rest, downloads in the dl
+   directory, myhdl, rhea and a few more things.
 
-* buildroot provides an ARM toolchain and a ramdisk with useful tools.
-  buildroot is branched from the tag "2015.05" of the [Busybox git
-  repository](https://git.buildroot.net/buildroot).  Buildroot in turn
-  includes hudreds of other projects such as busybox and uclibc that
-  are very useful on an embedded system.
+ * buildroot provides an ARM toolchain and a ramdisk with useful
+   tools.  buildroot is branched from the tag "2015.05" of the
+   [Busybox git repository](https://git.buildroot.net/buildroot).
+   Buildroot in turn includes hudreds of other projects such as
+   busybox and uclibc that are very useful on an embedded system.
 
-* The Linux kernel provides most of the hardware support.  It is
-  branched from the tag "v3.12.61" of the [Linux stable git
-  repository](https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git).
-  I can't remember why I started from this specific version of the
-  Linux kernel, but I probably found some Linux tree which were
-  supposed to support the s3c2416 and used that as a base for my
-  changes.
+ * The Linux kernel provides most of the hardware support.  It is
+   branched from the tag "v3.12.61" of the [Linux stable git
+   repository](https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git).
+   I can't remember why I started from this specific version of the
+   Linux kernel, but I probably found some Linux tree which were
+   supposed to support the s3c2416 and used that as a base for my
+   changes.
 
-* MyHDL is a Python based hardware description language (HDL) which is
-  used some FPGA images that are used for testing.  It is branched
-  from the master at that time from the [MyHDL git
-  repository](https://github.com/jandecaluwe/myhdl).
+ * MyHDL is a Python based hardware description language (HDL) which
+   is used some FPGA images that are used for testing.  It is branched
+   from the master at that time from the [MyHDL git
+   repository](https://github.com/jandecaluwe/myhdl).
 
-* Rhea is a collection of MyHDL cores and tools.  It is mostly used
-  for some build scripts that produce Spartan 6 bitstream images from
-  my MyHDL test programs.  It is branched from the master at that time
-  from the [Rhea git repository](https://github.com/cfelton/rhea).
+ * Rhea is a collection of MyHDL cores and tools.  It is mostly used
+   for some build scripts that produce Spartan 6 bitstream images from
+   my MyHDL test programs.  It is branched from the master at that
+   time from the [Rhea git
+   repository](https://github.com/cfelton/rhea).
+
+ * If you want to rebuild the FPGA image you will need the Xilinx ISE
+   Design Sofware for Linux.
 
 buildroot, linux, myhdl and rhea are automatically downloaded when you
 run the build script.
+
+Xilinx ISE
+==========
+
+Xilinx has a free version of the Xilinx ISE called WebPACK which can
+be used to synthesize the FPGA image.  Download it from their [web
+site](http://www.xilinx.com/products/design-tools/ise-design-suite/ise-webpack.html).
+You will need a Xilinx account and a free license key to be able to
+use it.  Install ISE according to their instructions.
+
+Source the settings script and make sure that you can run the ISE
+desktop.  On my Linux machine ISE 14.7 is installed in /opt/Xilinx and
+run the following commands:
+
+    . /opt/Xilinx/14.7/ISE_DS/settings64.sh
+    ise
+
+If everything works as it should this should start the ISE Project
+Navigator.  If you haven't installed the license key yet, ISE will
+complain about that.
 
 Building
 ========
@@ -97,6 +121,16 @@ all dependencies (such as the Linux kernel) and then build everything:
 
 On my machine, an Intel i7-2600 with 32Gbytes of RAM and a Samsung 850
 EVO SSD, a clean build from scratch takes about 10 minutes.
+
+If you have sourced the Xilinx ISE settings file, the build script
+will automatically detect that the XILINX environment variable is set
+and synthesize a FPGA image from source, otherwise it will use the
+prebuilt image from "misc/sds7102.bin".
+
+Since synthesizing an FPGA image takes a long time the script will
+only do it once even if the FPGA sources have changed.  If you want to
+resynthesize the FPGA image, remove
+"fpga/myhdl/wishbone/xilinx/sds7102.bin" and run "build.sh" again.
 
 If you are working on the Linux drivers or the applications you can
 rebuild only those parts by running make in the respective
@@ -178,8 +212,43 @@ ssh.  My scope ends up on IP 192.168.1.42, so this is how I do it:
 
 the default password is "root".
 
-For the moment there isn't much you can do with the scope, it's just a
-basic buildroot image with Linux and busybox.
+Run the initialization script:
+
+    ./init-sds.sh
+
+This loads a couple of device drivers and loads the FPGA image.
+
+If any GPIO pins on the SoC change a message will be printed to the
+console with information about what has changed.
+
+To watch for changes on the FPGA pins, run the "activity" application
+which reads the edge counters from the FPGA.
+
+Device Drivers and Applications
+===============================
+
+fpga.ko is a driver which can be used to load an FPGA image into the
+Xilinx FPGA.  To load an FPGA image, first insmod the kernel module
+and copy the FPGA .bin or .bit file to /dev/fpga:
+
+    insmod fpga.ko
+    cat fpga-image.bin >/dev/fpga
+
+gpios.ko is the device driver I used to [find GPIO pins on the
+SoC](http://blog.weinigel.se/2016/05/28/sds7102-gio-pins.html).  Just
+insmod the kernel module and it will print a message to the console
+when one of the GPIO pins that are listed in the source has changed
+state.
+
+    insmod gpios.ko
+
+regs.ko is a device driver for accessing registes in my FPGA image
+using a SPI-like bus which uses three of the pins that are normally
+used for configuring the FPGA.  This is then used by tools such as
+"activity" to show any activity on the FPGA pins.
+
+    insmod regs.ko
+    ./activity
 
 SSH tips
 ========
@@ -215,32 +284,3 @@ and then rebuild the image with:
 
 Boot the new image and you should automatically be logged in when you
 ssh to the scope.
-
-Device Drivers and Applications
-===============================
-
-fpga.ko is a driver which can be used to load an FPGA image into the
-Xilinx FPGA.  To load an FPGA image, first insmod the kernel module
-and copy the FPGA .bin or .bit file to /dev/fpga:
-
-    insmod fpga.ko
-    cat fpga-image.bin >/dev/fpga
-
-gpios.ko is the device driver I used to [find GPIO pins on the
-SoC](http://blog.weinigel.se/2016/05/28/sds7102-gio-pins.html).  Just
-insmod the kernel module and it will print a message to the console
-when one of the GPIO pins that are listed in the source has changed
-state.
-
-    insmod gpios.ko
-
-regs.ko is a device driver for accessing registes in my FPGA image
-using a SPI-like bus which uses three of the pins that are normally
-used for configuring the FPGA.  This is then used by tools such as
-"activity" to show any activity on the FPGA pins.
-
-    insmod regs.ko
-    ./activity
-
-TODO I haven't checked in my FPGA source code yet and these tools are
-not that useful without the image.

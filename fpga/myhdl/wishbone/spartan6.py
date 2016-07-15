@@ -1,0 +1,1 @@
+../common/spartan6.py

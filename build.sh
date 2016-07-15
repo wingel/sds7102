@@ -34,6 +34,24 @@ if [ ! -d rhea ]; then
     git clone -b "$RHEA_BRANCH" "$RHEA_REPO" rhea
 fi
 
+if [ -z "$XILINX" ]; then
+    echo 1>&2 "XILINX environment variable is not set, using prebuilt FPGA image"
+    fpga_image=misc/sds7102.bin
+else
+    fpga_image=fpga/myhdl/wishbone/xilinx/sds7102.bin
+
+    if [ ! -f "$fpga_image" ]; then
+        (cd fpga/myhdl/wishbone && ./image.py || exit 1)
+    fi
+fi
+
+target_fpga_image=buildroot/output/target/root/sds7102.bin
+
+if [ "$fpga_image" -nt "$target_fpga_image" ]; then
+    mkdir -p "`dirname \"$target_fpga_image\"`"
+    cp "$fpga_image" "$target_fpga_image"
+fi
+
 if [ ! -f buildroot/.config ]; then
     cp misc/buildroot.config buildroot/.config
     make -C buildroot oldconfig

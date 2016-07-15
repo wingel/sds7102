@@ -1,0 +1,4 @@
+c-basic-offset: 4
+indent-tabs-mode: nil
+tab-width: 8
+compile-command: (concat "cd " (file-name-directory (dirvars-find-upwards ".emacs-dirvars")) " && make ")

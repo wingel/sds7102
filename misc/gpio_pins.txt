@@ -1,0 +1,280 @@
+GPIO map
+
+Dedicated pins.
+
+SDRAM bus
+
+-	    SDATA[0:15]	SDRAM Data Bus
+-	    SADDR[0:15]	SDRAM Address Bus
+-	    DQS[0:1]	SDRAM Data Strobe
+-	    DQM[0:1]	SDRAM Data Mask
+-	    nSCS0	SDRAM /Chip Select 0
+-	    nSCS1	SDRAM /Chip Select 1 (probably not used)
+-	    SCLK	SDRAM Clock
+-	    SCKE	SDRAM Clock Enable
+
+External bus, NAND/NOR/SRAM/custom
+
+-	    RDATA[8:15]	-
+-	    RDATA[0:7]	NAND IO[0:7]
+
+GPA: I don't believe all of these special functions are used.  For
+example, it's a 16 bit SDRAM so DQM[2:3] shouldn't be used.
+
+0x56000000: 0f7f6f5c   Set around 0x82cc0 in os
+0x56000004: 00010003
+0x56000008: 00000000
+0x5600000c: 00000000
+
+GPA0	    0 Output	Ch1 solid state relay, Modified with GPA12, GPA15 (RDATA[0] on SMDK2416)
+GPA1	    0 Output	Ch1 relay, away from solid state relay, (GPA12, GPA15)
+GPA2	    1 RADDR17
+GPA3	    1 RADDR18
+GPA4	    1 RADDR19
+GPA5	    0 Output	Touched with GPA7, GPA23
+GPA6	    1 RADDR20
+GPA7	    0 Output	Touched with GPA5, GPA23
+GPA8	    1 RADDR23
+GPA9	    1 RADDR24
+GPA10	    1 RADDR25
+GPA11	    1 Reserved
+GPA12	    0 Output	Touched with GPA1, GPA15
+GPA13	    1 nRCS[2]
+GPA14	    1 nRCS[3]	Modified by code together with GPA16
+GPA15	    0 Output	Ch1 relay, close to solid state relay (GPA1, GPA12)
+GPA16	    1 nRCS[5]	High  Driven by hand in NAND code
+GPA17	    1 CLE	NAND Command Latch Enable
+GPA18	    1 ALE	NAND Address Latch Enable
+GPA19	    1 nFWE	NAND /Write Enable
+GPA20	    1 nFRE	NAND /Read Enable
+GPA21	    1 nRSTOUT	NAND /Reset
+GPA22	    1 nFCE	NAND /Chip Enable (maybe, could also be nRCS0)
+GPA23	    0 Output	Touched with GPA5, GPA7 (RSMCLK on SMDK2416)
+GPA24 	    1 nRSMAVD
+GPA25:26    1 DQM[2:3]	useless, SDRAM is only 16 bits wide
+GPA27	    1 Reserved
+
+GPB:
+
+0x56000010: 00255594
+0x56000014: 00000218
+0x56000018: 00154555
+0x5600001c: 00000001
+
+On SMDK2416
+
+GPB0	    0 Input	Buzzer.
+GPB1	    1 Output	TOUT1 sometimes	 beep?
+GPB2	    1 Output	TOUT2 sometimes	 beep?
+GPB3	    2 TOUT3	Backlight intensity PWM
+GPB4	    1 Output	I2C Bitbang SDA for Chrontel VGA Controller
+GPB5	    1 Output	Exp pin 6, moved on ethernet (scp of data)
+GPB6	    (1) RTCK	Via GPB6SEL, returned clock?  Toggles every
+	    		now and then when configured as input
+GPB6	    1 Reserved
+GPB7	    1 Reserved
+GPB8	    1 Output
+GPB9	    1 Output	I2C Bitbang SCL for Chrontel VGA Controller
+GPB10	    2 nXDREQ[0]
+
+GPC:
+
+0x56000020: aaaa56aa
+0x56000024: 0000000c
+0x56000028: ffffffff
+
+GPC0	    0 Input	# nope Video Line End
+GPC1	    2 VCLK	Video Clock
+GPC2	    2 HSYNC	Video Horizontal Sync
+GPC3	    2 VSYNC	Video Vertical Sync
+GPC4	    2 VDEN	Video Data Enable
+GPC5	    1 Output	Ch1 MUX A0
+GPC6	    1 Output	Ch1 MUX A1
+GPC7	    1 Output	Relay next to external trigger input (GPE3)
+GPC8:15     2 VD[7:0]	Video Data, Green[0:7]
+
+GPD:
+
+0x56000030: aaa9aaaa
+0x56000034: 00000100
+0x56000038: aaabaaaa
+0x5600003c: 00000000
+
+GPD0:7	    2 VD[8:15]	Video Data, Blue[0:7]
+GPD8	    1 Output	Ch2 solid state relay
+GPD9:15     2 VD[17:23]	Video Data, Red[1:7]
+
+GPE:
+
+0x56000040: 05100044
+0x56000044: 0000eb10
+0x56000048: 2000ffbb
+0x5600004c: 00000000
+
+GPE0	0 Input
+GPE1	1 Output	Ch2 relay, close to solid state relay
+GPE2	0 Input
+GPE3	1 Output	Odd relay in channel shield box, set together with GPC7 by state machine
+GPE4	0 Input		High
+GPE5	0 Input		Configured as SD0_CLK or input at 0x3d288 in os
+GPE6	0 Input
+GPE7	0 Input
+GPE8	0 Input		Exp pin 2, modified by code with GPE9, GPE10, GPE12
+GPE9	0 Input		Modified by code with GPE8, GPE10, GPE12
+GPE10	1 Output	Exp pin 3, Modified by code with GPE8, GPE9, GPE12
+GPE11	0 Input		SPI MISO - ethernet (CS is GPL13), maybe FPGA
+GPE12	1 Output	SPI MOSI - ethernet (CS is GPL13), mod by code
+GPE13	1 Output	SPI SCLK - ethernet (CS is GPL13), mabye FPGA
+GPE14	0 Input
+GEP15	0 Input
+
+GPE1, GPE3 and GPE14 are configured at the same time at 0x82d50 in os.
+
+GPF:
+
+0x56000050: 00000040
+0x56000054: 00000003
+0x56000058: 00000000
+0x5600005c: 00000000
+
+GPF0	0 Input		High
+GPF1	0 Input		Ethernet interrupt, EINT1
+GPF2	0 Input		USB Device VBUS detect, must be pulled low or
+	  		float to work (TODO check how it's done on SMDK2416),
+	  		Maybe also changes on ethernet activity (running scp)
+GPF3	1 Output	Connected to R174 next to front panel connector
+	  		Initialized at 0x82da8.  Controls Run/Stop LED
+GPF4	0 Input		Exp pin 8
+GPF5	0 Input
+GPF6	0 Input		Changing during operation
+GPF7	0 Input		Exp Pin 5
+
+GPG:
+
+0x56000060: 00001095
+0x56000064: 0000ffb8
+0x56000068: 0000aaaa
+0x5600006c: 00000000
+
+GPG0	1 Output	Low	Exp pin 10
+GPG1	1 Output	Low
+GPG2	1 Output	Low	Configured when SPI is in HS_SPI mode
+GPG3	2 EINT11	High	Exp pin 9
+GPG4	0 Input		High
+GPG5	0 Input		High	Exp pin 11
+GPG6	1 Output	Low
+GPG7	0 Input		High
+
+GPH: Same here, I don't believe all these special functions are used.
+For example UART0 does not have the RTS/CTS pins connected.
+
+0x56000070: 0566aa2a
+0x56000074: 000055ff
+0x56000078: 228809bf
+0x5600007c: 00000000
+
+GPH0	2 TXD[0]	Debug UART
+GPH1	2 RXD[0]	Debug UART
+GPH2	2 TXD[1]	Exp pin 4
+GPH3	0 Input		Connected to R80 next to front panel connector
+GPH4	2 TXD[2]
+GPH5	2 RXD[3]	Exp pin 7
+GPH6	2 TXD[3]
+GPH7	2 RXD[3]
+GPH8	2 nCTS0
+GPH9	1 nRTS0		Ch2 MUX A0
+GPH10	2 nCTS1
+GPH11	1 Output	Ch2 MUX A1
+GPH12	1 Output	Ch2 relay, away from solid state relay
+			Init with GPH3, GPH14
+GPH13	1 Output	Initialized on its own.
+GPH14	0 Input		Init with GPH3, GPH12.  Might be used as USB clock
+
+GPH13 is initialized on its own.
+GPH3, GPH12, GPH14 are initialized as a group in os.
+GPH9, 11 are initialized as a group in os.
+
+GPK:
+
+0x560000e0: 00404000
+0x560000e4: 0000dfff
+0x560000e8: 0aaaaaaa
+
+All these pins are at 1.8V.
+
+GPK0	0 Input		High
+GPK1	0 Input		High
+GPK2	0 Input		High	Exp pin 16
+GPK3	0 Input		High	FPGA CCLK
+GPK4	0 Input		High
+GPK5	0 Input		High	FPGA DONE
+GPK6	0 Input		High	Exp pin 14
+GPK7	1 Output	High	FPGA PROG_B
+GPK8	0 Input		High
+GPK9	0 Input		High	Exp pin 12
+GPK10	0 Input		High
+GPK11	1 Output	High	FPGA DIN, maybe FPGA IO later
+GPK12	0 Input		High	Exp pin 15
+GPK13	0 Input		Low	FPGA INIT_B, maybe FPGA IO later
+GPK14	0 Input		High	Exp pin 13
+GPK15	0 Input		High
+
+mww 0x560000e0 0x00404000
+mww 0x560000e4 0x0000dfff
+
+GPJ:
+
+0x560000d0: 00000000
+0x560000d4: 00000000
+0x560000d8: 55555555
+0x560000dc: 00000000
+
+There are references to GPJ in the code, and in the S3C2416 register
+map in the manual but there are no such pins on the chip.
+
+GPL:
+
+0x560000f0: 04000000
+0x560000f4: 00002000
+0x560000f8: 15555555
+
+GPL0	0 Input
+..
+GPL3	0 Input
+GPL8	0 Input		Exp pin 1
+GPL9	0 Input
+GPL13	1 Output	High	SPI Ethernet Chip Select
+
+GPM:
+
+0x56000100: 0000000a
+0x56000104: 00000003
+0x56000108: 00000000
+
+GPM0	2 RSMBWAIT	High
+GPM1	2 FRnB		NAND Ready/Busy
+
+Expansion connector, U60 uppper left corner
+
+1	GPL8
+2	GPE8
+3	GPE10
+4	GPH2
+5	GPF7
+6	GPB5
+7	GPH5
+8	GPF4
+9	GPG3
+10	GPG1
+11	GPG5
+12	GPK9
+13	GPK14
+14	GPK10
+15	GPK12
+16	GPK3
+17	GND
+18	GND
+19	7.3V, not the same wire as for pin 20
+20	7.3V, not the same wire as for pin 19
+
+Note, pin 4 and GPK* are all 1.8V, the rest are at 3.3V.

@@ -22,6 +22,9 @@
 #include <linux/uaccess.h>
 #include <linux/sched.h>
 
+#include <mach/gpio-samsung.h>
+#include <plat/gpio-cfg.h>
+
 #define DRIVER_NAME "xilinx-slave-serial"
 #define DEVICE_NAME "fpga"
 

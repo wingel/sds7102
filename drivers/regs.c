@@ -27,6 +27,9 @@
 
 #include <asm/io.h>
 
+#include <mach/gpio-samsung.h>
+#include <plat/gpio-cfg.h>
+
 #define DRIVER_NAME "regs"
 #define DEVICE_NAME "regs"
 

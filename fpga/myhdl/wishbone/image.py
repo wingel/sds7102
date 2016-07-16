@@ -26,7 +26,7 @@ def top(din, init_b, cclk,
         adc_clk_p, adc_clk_n, adc_dat_p, adc_dat_n, adc_ovr_p, adc_ovr_n,
         shifter_sck, shifter_sdo,
         bu2506_ld, adf4360_le, adc08d500_cs, lmh6518_cs, dac8532_sync,
-        trig_p, trig_n, ba7406_vd, ba7406_hd,
+        trig_p, trig_n, ba7406_vd, ba7406_hd, ac_trig,
         bank0, bank2, bank3):
     insts = []
 
@@ -182,7 +182,9 @@ def top(din, init_b, cclk,
     # Random stuff
 
     if 1:
-        pins = ConcatSignal(cclk, ba7406_hd, ba7406_vd, trig, bank3, bank2, bank0)
+        pins = ConcatSignal(cclk,
+                            ac_trig, ba7406_hd, ba7406_vd, trig,
+                            bank3, bank2, bank0)
         hc = HybridCounter()
         mux.add(hc, 0, pins)
 

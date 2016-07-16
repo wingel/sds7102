@@ -75,7 +75,11 @@ class SDS7102(FPGA):
         'ba7406_hd':    dict(pins = ('E6', 'R12'), iostandard = 'LVCMOS33',
                              clock_dedicated_route = False),
 
-        'bank0':        dict(pins = ("C4",  "A4",  "B5",  "A5",
+        'ac_trig':	dict(pins = ('A4'), iostandard = 'LVCMOS33',
+                             clock_dedicated_route = False,
+                             ),
+
+        'bank0':        dict(pins = ("C4",  "B5",  "A5",
                                      "C5",
                                      "D6",  "C6", " B8",
                                      "E10", "C10",

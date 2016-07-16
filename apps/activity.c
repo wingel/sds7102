@@ -10,7 +10,7 @@
 /* this table must match the table in _sds7102.py */
 static const char *names[] = {
     /* bank0 */
-    "C4",  "A4",  "B5",  "A5",
+    "C4",  "B5",  "A5",
     "C5",
     "D6",  "C6",  "B8",
     "E10", "C10",
@@ -39,6 +39,7 @@ static const char *names[] = {
 
     "Tr1", "Tr2",               /* Triggers */
     "Vd1", "Vd2", "Hd1", "Hd2", /* Vertical Sync, Horizonal Sync */
+    "AC",                       /* AC Trigger */
 
     "R11"                       /* CCLK */
 };

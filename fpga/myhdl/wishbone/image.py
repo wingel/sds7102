@@ -28,6 +28,7 @@ def top(din, init_b, cclk,
         shifter_sck, shifter_sdo,
         bu2506_ld, adf4360_le, adc08d500_cs, lmh6518_cs, dac8532_sync,
         trig_p, trig_n, ba7406_vd, ba7406_hd, ac_trig,
+        probe_comp, ext_trig_out,
         bank0, bank2, bank3):
     insts = []
 
@@ -180,10 +181,32 @@ def top(din, init_b, cclk,
     insts.append(trig_inst)
 
     ####################################################################
+    # Probe compensation output and external trigger output
+    # Just toggle them at 1kHz
+
+    probe_comb_div = 25000
+    probe_comp_ctr = Signal(intbv(0, 0, probe_comb_div))
+    probe_comp_int = Signal(False)
+    @always_seq (system.CLK.posedge, system.RST)
+    def probe_comp_seq():
+        if probe_comp_ctr == probe_comb_div - 1:
+            probe_comp_int.next = not probe_comp_int
+            probe_comp_ctr.next = 0
+        else:
+            probe_comp_ctr.next = probe_comp_ctr + 1
+    insts.append(probe_comp_seq)
+    @always_comb
+    def probe_comp_comb():
+        probe_comp.next = probe_comp_int
+        ext_trig_out.next = probe_comp_int
+    insts.append(probe_comp_comb)
+
+    ####################################################################
     # Random stuff
 
     if 1:
         pins = ConcatSignal(cclk,
+                            ext_trig_out, probe_comp,
                             ac_trig, ba7406_hd, ba7406_vd, trig,
                             ref_clk,
                             bank3, bank2, bank0)

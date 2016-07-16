@@ -13,10 +13,9 @@ static const char *names[] = {
     "C4",  "B5",  "A5",
     "C5",
     "D6",  "C6",  "B8",
-    "E10",
 
     /* bank2 */
-    "T11", "M12", "M11", "T10", "N12",
+    "M12", "M11", "T10", "N12",
     "P12", "N11", "P11", "N9",  "P9",
     "L10", "M10", "R9",  "T9",  "M9",
     "N8",  "P8",  "T8",  "P7",  "M7",
@@ -42,6 +41,9 @@ static const char *names[] = {
     "Tr1", "Tr2",               /* Triggers */
     "Vd1", "Vd2", "Hd1", "Hd2", /* Vertical Sync, Horizonal Sync */
     "AC",                       /* AC Trigger */
+
+    "Prb",                      /* Probe compensation output */
+    "Ext",                      /* External trigger output */
 
     "R11"                       /* CCLK */
 };

@@ -169,7 +169,7 @@ mess up the flash, or if you manage to somehow use the MTD devices in
 Linux to write to flash memory, but I haven't managed to mess up my
 scope so far.
 
-To load Linux, modify the first line of the script misc/boot-jtag.sh
+To load Linux, modify the first line of the script host/boot-jtag.sh
 to match your JTAG adapter and if you have built everything as shown
 above you should be able to just run the script to download Linux into
 RAM on the SDS7102 and execute it:
@@ -223,6 +223,23 @@ console with information about what has changed.
 
 To watch for changes on the FPGA pins, run the "activity" application
 which reads the edge counters from the FPGA.
+
+The firmware can now capture samples from the ADC.  Boot the normal
+OWON firmware to set up the AFE and all other parts.  Then use the
+boot-jtag.sh script to make a soft reboot into Linux.  When Linux is
+running, run "init-sds.sh".
+
+On a Linux PC you should now be able to run the capture application.
+
+    ./host/capture.py root@scope-ip-address
+
+The capture application will log onto the scope using ssh and run the
+"sds-server" application which gives acess to the registers and the
+GPIOs on the scope.  Unless you have set up public key login as
+described below you will have to enter the password for the scope,
+"root".  If everything goes well you should get a screen showing a
+waveform.  What you will see will depend on the settings that were
+configured with the OWON firmware.
 
 Synthesizing MyHDL code with ISE
 ================================

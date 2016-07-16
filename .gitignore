@@ -5,3 +5,5 @@
 /linux
 /myhdl
 /rhea
+*.pyc
+*.pyo

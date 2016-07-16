@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 set -e
 set -x
 
@@ -18,5 +18,5 @@ make -C drivers
 
 make -C apps
 
-cp apps/activity buildroot/output/target/root
+cp apps/{activity,sds-server} buildroot/output/target/root
 cp drivers/*.ko buildroot/output/target/root

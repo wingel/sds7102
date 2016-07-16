@@ -10,8 +10,15 @@ CFLAGS += -O2
 
 TARGETS :=
 TARGETS += activity
+TARGETS += sds-server
 
 all: $(TARGETS)
+
+sds-server: sds-server.o reg.o
+
+sds-server.o: sds-server.c reg.h
+
+reg.o: reg.c reg.h
 
 clean:
 	rm -f -- $(TARGETS) *.o *~

@@ -224,12 +224,10 @@ console with information about what has changed.
 To watch for changes on the FPGA pins, run the "activity" application
 which reads the edge counters from the FPGA.
 
-The firmware can now capture samples from the ADC.  Boot the normal
-OWON firmware to set up the AFE and all other parts.  Then use the
-boot-jtag.sh script to make a soft reboot into Linux.  When Linux is
-running, run "init-sds.sh".
-
-On a Linux PC you should now be able to run the capture application.
+The firmware can now capture samples from the ADC and control the
+analog frontend.  This means that you can make a capture without ever
+having to boot the OWON firmware.  To do that, run the capture
+application on a Linux PC:
 
     ./host/capture.py root@scope-ip-address
 
@@ -238,8 +236,9 @@ The capture application will log onto the scope using ssh and run the
 GPIOs on the scope.  Unless you have set up public key login as
 described below you will have to enter the password for the scope,
 "root".  If everything goes well you should get a screen showing a
-waveform.  What you will see will depend on the settings that were
-configured with the OWON firmware.
+waveform.  You can play around with the settings in capture.py to see
+how they affect the capture.  You'll need the data sheets for the
+components in the AFE to know how to change some of the values.
 
 Synthesizing MyHDL code with ISE
 ================================

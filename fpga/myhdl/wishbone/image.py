@@ -19,10 +19,13 @@ from hybrid_counter import HybridCounter
 from util import tristate
 from regfile import RegFile, Field, RwField, Port
 from sampler import Sampler
+from shifter import Shifter, ShifterBus
 from ram import Ram
 
 def top(din, init_b, cclk,
         adc_clk_p, adc_clk_n, adc_dat_p, adc_dat_n, adc_ovr_p, adc_ovr_n,
+        shifter_sck, shifter_sdo,
+        bu2506_ld, adf4360_le, adc08d500_cs, lmh6518_cs, dac8532_sync,
         bank0, bank1, bank2, bank3):
     insts = []
 
@@ -143,6 +146,32 @@ def top(din, init_b, cclk,
                                 sample_enable = adc_capture_sync,
                                 skip_cnt = 99)
         mux.add(adc_sampler_1, 0x6000)
+
+    ####################################################################
+    # Analog frontend
+
+    if 1:
+        shifter_bus = ShifterBus(6)
+
+        @always_comb
+        def shifter_comb():
+            shifter_sck.next = shifter_bus.SCK
+            shifter_sdo.next = shifter_bus.SDO
+
+            bu2506_ld.next = shifter_bus.CS[0]
+            adf4360_le.next = shifter_bus.CS[1]
+            adc08d500_cs.next = not shifter_bus.CS[2]
+            lmh6518_cs.next[0] = not shifter_bus.CS[3]
+            lmh6518_cs.next[1] = not shifter_bus.CS[4]
+            dac8532_sync.next = not shifter_bus.CS[5]
+        insts.append(shifter_comb)
+
+        shifter = Shifter(system, shifter_bus, divider = 100)
+        addr = 0x210
+        for reg in shifter.create_regs():
+            mux.add(reg, addr)
+            addr += 1
+        insts.append(shifter.gen())
 
     ####################################################################
     # Random stuff

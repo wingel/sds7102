@@ -51,6 +51,98 @@ class SDS(object):
         self.fo.write(cmd + '\n')
         self.fo.flush()
 
+    def atten(self, channel, value):
+        assert channel >= 0 and channel < 2
+        assert value >= 0 and value < 2
+
+        if channel:
+            a = GPE[1]
+            b = GPH[12]
+        else:
+            a = GPA[15]
+            b = GPA[1]
+
+        self.set_gpio(a, 1 - value)
+        self.set_gpio(b, value)
+
+    def acdc(self, channel, value):
+        assert channel >= 0 and channel < 2
+        assert value >= 0 and value < 2
+
+        if channel:
+            a = GPD[8]
+        else:
+            a = GPA[0]
+
+        self.set_gpio(a, value)
+
+    def mux(self, channel, value):
+        assert channel >= 0 and channel < 2
+        assert value >= 0 and value < 4
+
+        if channel:
+            a0 = GPH[9]
+            a1 = GPH[11]
+        else:
+            a0 = GPC[5]
+            a1 = GPC[6]
+
+        self.set_gpio(a0, value & 1)
+        self.set_gpio(a1, (value & 2) >> 1)
+
+    def odd_relay(self, value):
+        assert value >= 0 and value < 2
+        self.set_gpio(GPE[3], value)
+
+    def ext_relay(self, value):
+        assert value >= 0 and value < 2
+        self.set_gpio(GPC[7], value)
+
+    def shifter(self, cs, bits, value, cpol = 0, cpha = 0, pulse = 0):
+        assert cpol >= 0 and cpol < 2
+        assert cpha >= 0 and cpha < 2
+        assert pulse >= 0 and pulse < 2
+        assert cs >= 0 and pulse < 6
+        assert bits >= 0 and bits <= 32
+        data = [ value,
+                 bits | (cpha<<8) | (cpol<<9) | (pulse<<10) | (1<<16<<cs) ]
+        self.write_regs(0x210, data)
+        time.sleep(0.1)
+
+    def bu2506(self, channel, value):
+        assert channel >= 0 and channel < 16
+        assert value >= 0 and value < 1024
+        v = channel | (value << 4)
+        v2 = 0
+        for i in range(14):
+            v2 <<= 1
+            if v & (1<<i):
+                v2 |= 1
+        print "bu2506 0x%04x 0x%04x" % (v, v2)
+        self.shifter(0, 14, v2, pulse = 1)
+
+    def adf4360(self, value):
+        self.shifter(1, 24, value, pulse = 1)
+
+    def adc08d500(self, value):
+        self.shifter(2, 32, value, cpol = 1, cpha = 1)
+
+    def lmh6518(self, channel, value):
+        assert channel >= 0 and channel < 2
+        if channel:
+            self.shifter(4, 24, value)
+        else:
+            self.shifter(3, 24, value)
+
+    def dac8532(self, channel, value):
+        assert channel >= 0 and channel < 2
+        assert value >= 0 and value < 65536
+        if channel:
+            base = 0x100000
+        else:
+            base = 0x240000
+        self.shifter(5, 24, base | value, cpha = 1)
+
     def capture(self, count):
         self.write_reg(0x230, 0)
         self.write_reg(0x230, 1)

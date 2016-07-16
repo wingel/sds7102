@@ -224,6 +224,46 @@ console with information about what has changed.
 To watch for changes on the FPGA pins, run the "activity" application
 which reads the edge counters from the FPGA.
 
+Device Drivers and Applications
+===============================
+
+fpga.ko is a driver which can be used to load an FPGA image into the
+Xilinx FPGA.  To load an FPGA image, first insmod the kernel module
+and copy the FPGA .bin or .bit file to /dev/fpga:
+
+    insmod fpga.ko
+    cat sds7102.bin >/dev/fpga
+
+This is done if you run the init-sds.sh script.
+
+gpios.ko is the device driver I used to [find GPIO pins on the
+SoC](http://blog.weinigel.se/2016/05/28/sds7102-gio-pins.html).  Just
+insmod the kernel module and it will print a message to the console
+when one of the GPIO pins that are listed in the source has changed
+state.
+
+    insmod gpios.ko
+
+This is also done if you run the init-sds.sh script.
+
+regs.ko is a device driver for accessing registes in my FPGA image
+using a SPI-like bus which uses three of the pins that are normally
+used for configuring the FPGA.
+
+    insmod regs.ko
+
+This is also done if you run the init-sds.sh script.
+
+activity is an application that reads out the edge counter for the
+pins of the FPGA and prints it every second:
+
+    ./activity
+
+sds-server is an application which is used by the host tools to access
+resources on the scope.  It can currently modify GPIO pins (using the
+/sys/class/gpio interface in the Linux kernel) and access registers on
+the FPGA.  To see how it works, look at the source or host/sds.py.
+
 The firmware can now capture samples from the ADC and control the
 analog frontend.  This means that you can make a capture without ever
 having to boot the OWON firmware.  To do that, run the capture
@@ -240,6 +280,18 @@ waveform.  You can play around with the settings in capture.py to see
 how they affect the capture.  You'll need the data sheets for the
 components in the AFE to know how to change some of the values.
 
+It's possible to trace the SoC bus signals using host/trace_soc.py.
+Run it like this:
+
+    ./host/trace_soc.py root@scope-ip-address
+
+It will write a called "soc.vcd" will be visualised with gtkwave:
+
+    gtkwave soc.vcd
+
+There is some code called "soc_frob" in drivers/regs.c which tries to
+generate test patterns on the SoC bus.
+
 Synthesizing MyHDL code with ISE
 ================================
 
@@ -250,32 +302,6 @@ files.  After running "image.py" to generate those files, open
 the ise/wishbone project in ISE and synthesize the normal way.
 This way you can look at the floorplan and other things that are
 hard to do outside of ISE.
-
-Device Drivers and Applications
-===============================
-
-fpga.ko is a driver which can be used to load an FPGA image into the
-Xilinx FPGA.  To load an FPGA image, first insmod the kernel module
-and copy the FPGA .bin or .bit file to /dev/fpga:
-
-    insmod fpga.ko
-    cat fpga-image.bin >/dev/fpga
-
-gpios.ko is the device driver I used to [find GPIO pins on the
-SoC](http://blog.weinigel.se/2016/05/28/sds7102-gio-pins.html).  Just
-insmod the kernel module and it will print a message to the console
-when one of the GPIO pins that are listed in the source has changed
-state.
-
-    insmod gpios.ko
-
-regs.ko is a device driver for accessing registes in my FPGA image
-using a SPI-like bus which uses three of the pins that are normally
-used for configuring the FPGA.  This is then used by tools such as
-"activity" to show any activity on the FPGA pins.
-
-    insmod regs.ko
-    ./activity
 
 SSH tips
 ========

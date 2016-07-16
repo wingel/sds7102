@@ -39,6 +39,27 @@ class SDS7102(FPGA):
         'ref_clk':	dict(pins = ('C10',), iostandard = 'LVCMOS33',
                              clock_dedicated_route = False),
 
+        'soc_clk_p':	dict(pins = ('P7',), iostandard = 'DIFF_SSTL18_II'),
+        'soc_clk_n':	dict(pins = ('M7',), iostandard = 'DIFF_SSTL18_II'),
+
+        'soc_cs':       dict(pins = ('B1'), iostandard = 'SSTL18_II'),
+        'soc_ras':      dict(pins = ('T8'), iostandard = 'SSTL18_II'),
+        'soc_cas':      dict(pins = ('R9'), iostandard = 'SSTL18_II'),
+        'soc_we':       dict(pins = ('P6'), iostandard = 'SSTL18_II'),
+        'soc_ba':       dict(pins = ('F6',  'N12'), iostandard = 'SSTL18_II'),
+        'soc_a':        dict(pins = ('F5',  'M4',  'F4',  'N9',
+                                     'R7',  'P12', 'B3',  'L10',
+                                     'E4',  'L8',  'M5',  'N4'),
+                             iostandard = 'SSTL18_II'),
+
+        'soc_dqs':      dict(pins = ('T9', 'M6'), iostandard = 'SSTL18_II'),
+        'soc_dm':       dict(pins = ('P11', 'T10'), iostandard = 'SSTL18_II'),
+        'soc_dq':       dict(pins = ('T7',  'L7',  'P9',  'N5',
+                                     'M11', 'T3',  'M9',  'T4',
+                                     'T6',  'M12', 'P4',  'N6',
+                                     'N8',  'P5',  'P8',  'R5'),
+                             iostandard = 'SSTL18_II'),
+
         'adc_clk_p':	dict(pins = ('E7',), iostandard = 'LVDS_25'),
         'adc_clk_n':	dict(pins = ('E8',), iostandard = 'LVDS_25'),
 
@@ -107,21 +128,12 @@ class SDS7102(FPGA):
                              # pulldown = True,
                              ),
 
-        'bank2':        dict(pins = ("M12", "M11", "T10", "N12",
-                                     "P12", "N11", "P11", "N9",  "P9",
-                                     "L10", "M10", "R9",  "T9",  "M9",
-                                     "N8",  "P8",  "T8",  "P7",  "M7",
-                                     "R7",  "T7",  "P6",  "T6",  "R5",
-                                     "T5",  "N5",  "P5",  "L8",  "L7",
-                                     "P4",  "T4",  "M6",  "N6",  "T3"),
+        'bank2':        dict(pins = ("N11"),
                              iostandard = 'LVCMOS18',
                              clock_dedicated_route = False,
-                             # pullup = True,
-                             # pulldown = True,
                              ),
 
-
-        'bank3':        dict(pins = ("M4",  "M3",  "M5",  "N4",  "R2",
+        'bank3':        dict(pins = ("R2",
                                      "R1",  "P2",  "P1",  "N3",  "N1",
                                      "M2",  "M1",  "L3",  "L1",  "K2",
                                      "K1",  "J3",  "J1",  "H2",  "H1",
@@ -129,9 +141,8 @@ class SDS7102(FPGA):
                                      "J4",  "J6",  "H5",  "H4",  "H3",
                                      "L4",  "L5",  "E2",  "E1",  "K5",
                                      "K6",  "C3",  "C2",  "D3",  "D1",
-                                     "C1",  "B1",  "G6",  "G5",  "B2",
-                                     "A2",  "F4",  "F3",  "E4",  "E3",
-                                     "F6",  "F5",  "B3",  "A3"),
+                                     "C1",  "G6",  "G5",  "B2",
+                                     "A2",  "F3",  "E3"),
                              iostandard = 'LVCMOS18',
                              clock_dedicated_route = False,
                              # pullup = True,
@@ -141,6 +152,14 @@ class SDS7102(FPGA):
 
     extra_ucf = '''
 CONFIG VCCAUX = "3.3";
+
+# VREF bank 2
+CONFIG PROHIBIT = M10;
+CONFIG PROHIBIT = T5;
+
+# VREF Bank 3
+CONFIG PROHIBIT = A3;
+CONFIG PROHIBIT = M3;
 '''
 
     for k, v in sorted(default_ports.items()):

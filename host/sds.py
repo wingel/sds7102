@@ -158,6 +158,31 @@ class SDS(object):
 
         return data
 
+    def trace_soc(self, count):
+        """Get a SoC bus trace"""
+
+        self.write_reg(0x231, 0)
+        self.write_reg(0x231, 1)
+        time.sleep(0.1)
+
+        sdr0 = self.read_regs(0x2000, count)
+        sdr1 = sdr0
+        sdr = numpy.dstack((sdr1, sdr0))[0].reshape(len(sdr0)+len(sdr1))
+
+        print sdr0
+        print sdr1
+        print sdr
+
+        ddr0 = self.read_regs(0x3000, count)
+        ddr1 = self.read_regs(0x3800, count)
+        ddr = numpy.dstack((ddr1, ddr0))[0].reshape(len(ddr0)+len(ddr1))
+
+        print ddr0
+        print ddr1
+        print ddr
+
+        return sdr, ddr
+
 def main():
     sds = SDS('sds')
 

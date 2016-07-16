@@ -24,6 +24,8 @@ from ram import Ram
 
 def top(din, init_b, cclk,
         ref_clk,
+        soc_clk_p, soc_clk_n, soc_cs, soc_ras, soc_cas, soc_we, soc_ba, soc_a,
+        soc_dqs, soc_dm, soc_dq,
         adc_clk_p, adc_clk_n, adc_dat_p, adc_dat_n, adc_ovr_p, adc_ovr_n,
         shifter_sck, shifter_sdo,
         bu2506_ld, adf4360_le, adc08d500_cs, lmh6518_cs, dac8532_sync,
@@ -57,6 +59,79 @@ def top(din, init_b, cclk,
                               slave_spi_bus.SD_I,
                               slave_spi_bus.SD_O, slave_spi_bus.SD_OE)
     insts.append(slave_sdioinst)
+
+    ####################################################################
+    # SoC bus
+
+    soc_clk = Signal(False)
+    soc_clk_b = Signal(False)
+    soc_clk_inst = ibufgds_diff_out('ibufgds_diff_out_soc_clk', soc_clk_p, soc_clk_n, soc_clk, soc_clk_b)
+    insts.append(soc_clk_inst)
+
+    soc_clk._name = 'soc_clk' # Must match name of timing spec in ucf file
+    soc_clk_b._name = 'soc_clk_b' # Must match name of timing spec in ucf file
+
+    soc_system = System(soc_clk, None)
+
+    if 1:
+        # Trace soc bus control signals
+
+        soc_capture = Signal(False)
+        soc_ctl = RegFile('soc_ctl', "SOC control", [
+            RwField(system, 'soc_capture', "Capture samples", soc_capture),
+            ])
+        mux.add(soc_ctl, 0x231)
+        soc_capture_sync = Signal(False)
+        soc_capture_sync_inst = syncro(soc_clk, soc_capture, soc_capture_sync)
+        insts.append(soc_capture_sync_inst)
+
+        soc_sdr = ConcatSignal(
+            soc_a, soc_ba, soc_we, soc_cas, soc_ras, soc_cs)
+
+        soc_sdr_sampler = Sampler(addr_depth = 0x800,
+                                  sample_clk = soc_clk,
+                                  sample_data = soc_sdr,
+                                  sample_enable = soc_capture_sync)
+        mux.add(soc_sdr_sampler, 0x2000)
+
+        soc_dqs_0 = Signal(intbv(0)[len(soc_dqs):])
+        soc_dqs_1 = Signal(intbv(0)[len(soc_dqs):])
+        soc_dqs_ddr_inst = iddr2('soc_dqs_iddr2',
+                                 soc_dqs, soc_dqs_0, soc_dqs_1,
+                                 c0 = soc_clk, c1 = soc_clk_b,
+                                 ddr_alignment = 'C0')
+        insts.append(soc_dqs_ddr_inst)
+
+        soc_dm_0 = Signal(intbv(0)[len(soc_dm):])
+        soc_dm_1 = Signal(intbv(0)[len(soc_dm):])
+        soc_dm_ddr_inst = iddr2('soc_dm_iddr2',
+                                 soc_dm, soc_dm_0, soc_dm_1,
+                                 c0 = soc_clk, c1 = soc_clk_b,
+                                 ddr_alignment = 'C0')
+        insts.append(soc_dm_ddr_inst)
+
+        soc_dq_0 = Signal(intbv(0)[len(soc_dq):])
+        soc_dq_1 = Signal(intbv(0)[len(soc_dq):])
+        soc_dq_ddr_inst = iddr2('soc_dq_iddr2',
+                                 soc_dq, soc_dq_0, soc_dq_1,
+                                 c0 = soc_clk, c1 = soc_clk_b,
+                                 ddr_alignment = 'C0')
+        insts.append(soc_dq_ddr_inst)
+
+        soc_ddr_0 = ConcatSignal(soc_dqs_0, soc_dm_0, soc_dq_0)
+        soc_ddr_1 = ConcatSignal(soc_dqs_1, soc_dm_1, soc_dq_1)
+
+        soc_ddr_sampler_0 = Sampler(addr_depth = 0x800,
+                                    sample_clk = soc_clk,
+                                    sample_data = soc_ddr_0,
+                                    sample_enable = soc_capture_sync)
+        mux.add(soc_ddr_sampler_0, 0x3000)
+
+        soc_ddr_sampler_1 = Sampler(addr_depth = 0x800,
+                                    sample_clk = soc_clk,
+                                    sample_data = soc_ddr_1,
+                                    sample_enable = soc_capture_sync)
+        mux.add(soc_ddr_sampler_1, 0x3800)
 
     ####################################################################
     # ADC bus

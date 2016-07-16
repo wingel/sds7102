@@ -50,6 +50,59 @@ static DEFINE_MUTEX(regs_mutex);
 static unsigned regs_open_count;
 static char regs_pin_requested[ARRAY_SIZE(regs_pins)];
 
+/* FROBNICATE v. To manipulate or adjust, to tweak.
+ *
+ * Derived from FROBNITZ (q.v.). Usually abbreviated to FROB. Thus one
+ * has the saying "to frob a frob". See TWEAK and TWIDDLE.
+ *
+ * Usage: FROB, TWIDDLE, and TWEAK sometimes connote points along a
+ * continuum. FROB connotes aimless manipulation; TWIDDLE connotes
+ * gross manipulation, often a coarse search for a proper setting;
+ * TWEAK connotes fine-tuning. If someone is turning a knob on an
+ * oscilloscope, then if he's carefully adjusting it he is probably
+ * tweaking it; if he is just turning it but looking at the screen he
+ * is probably twiddling it; but if he's just doing it because turning
+ * a knob is fun, he's frobbing it. */
+
+#define FROB 1
+
+#if FROB
+#define FROB_COUNT 16
+#define FROB_OFFSET 64
+#define FROB_STRIDE (4 + 1024 + 32 * 1024)
+// #define FROB_STRIDE 4
+#define FROB_ADDR(i) (FROB_OFFSET + (i) * FROB_STRIDE)
+
+static uint32_t frob_data[FROB_COUNT];
+
+static const uint32_t ddr_addr = 0x38000000;
+static char *ddr_mem;
+
+/* Try to generate test patterns on the SoC bus by writing and reading
+ * some address that go to the FPGA.  */
+static void soc_frob(void)
+{
+	local_irq_disable();
+
+	if (1) {
+		int i;
+		for (i = 0; i < 32; i++)
+			writel((1<<i), ddr_mem + i * 4);
+	}
+
+	if (1)
+	       udelay(1);
+
+	if (1) {
+		int i;
+		for (i = 0; i < FROB_COUNT; i++)
+			frob_data[i] = readl(ddr_mem + FROB_ADDR(i));
+	}
+
+	local_irq_enable();
+}
+#endif
+
 static int regs_open(struct inode *inode, struct file *file)
 {
 	int r = 0;
@@ -62,6 +115,10 @@ static int regs_open(struct inode *inode, struct file *file)
 		return -EBUSY;
 	}
 	regs_open_count++;
+
+#if FROB
+	ddr_mem = ioremap(ddr_addr, 32 * 1024 * 1024);
+#endif
 
 	for (n = 0; n < ARRAY_SIZE(regs_pins); n++) {
 		r = gpio_request(regs_pins[n].pin, regs_pins[n].name);
@@ -122,9 +179,14 @@ static ssize_t regs_write(struct file *file,
 			gpio_set_value(FPGA_CCLK, 1);
 			// udelay(10);
 			gpio_set_value(FPGA_CCLK, 0);
-			// udelay(10);
 			b <<= 1;
 		}
+#if FROB
+		/* Generate test patterns after every byte that's
+		 * written, with a bit of luck the SoC bus tracer will
+		 * catch these. */
+		soc_frob();
+#endif
 	}
 	mutex_unlock(&regs_mutex);
 
@@ -194,6 +256,11 @@ static int regs_release(struct inode *inode, struct file *file)
 			regs_pin_requested[n] = 0;
 		}
 	}
+
+#if FROB
+	iounmap(ddr_mem);
+#endif
+
 	regs_open_count--;
 
 	return r;

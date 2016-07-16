@@ -20,18 +20,24 @@ name_sdr = (
     'A[8]',  'A[9]',  'A[10]', 'A[11]',
     )
 
+name_reg = [ 'Z_' + name for name in name_sdr ]
+
 name_ddr = ('DQS[0]', 'DQS[1]',
             'DM[0]',  'DM[1]',
             'DQ[0]',  'DQ[1]',  'DQ[2]',  'DQ[3]',
             'DQ[4]',  'DQ[5]',  'DQ[6]',  'DQ[7]',
             'DQ[8]',  'DQ[9]',  'DQ[10]', 'DQ[11]',
             'DQ[12]', 'DQ[13]', 'DQ[14]', 'DQ[15]',
+
+            'Z_DQS_OE', 'Z_DQS_O', 'Z_DQ_OE',
             )
 
 print len(name_sdr)
+print len(name_reg)
 print len(name_ddr)
 
 sym_sdr = string.lowercase
+sym_reg = string.uppercase
 sym_ddr = string.digits + string.punctuation
 
 def out(f, v, n, sym):
@@ -41,7 +47,7 @@ def out(f, v, n, sym):
 def main():
     sds = SDS(sys.argv[1])
 
-    sdr, ddr = sds.trace_soc(2048)
+    sdr, reg, ddr = sds.soc(2048)
 
     f = open('soc.vcd', 'w')
 
@@ -51,6 +57,8 @@ def main():
     f.write('$scope module logic $end\n')
     for i in range(len(name_sdr)):
         f.write('$var wire 1 %s %s $end\n' % (sym_sdr[i], name_sdr[i]))
+    for i in range(len(name_reg)):
+        f.write('$var wire 1 %s %s $end\n' % (sym_reg[i], name_reg[i]))
     for i in range(len(name_ddr)):
         f.write('$var wire 1 %s %s $end\n' % (sym_ddr[i], name_ddr[i]))
     f.write('$upscope $end\n')
@@ -58,18 +66,23 @@ def main():
     f.write('$dumpvars\n')
 
     print 'sdr', sdr
+    print 'reg', reg
     print 'ddr', ddr
 
     last_sdr = 0
+    last_reg = 0
     last_ddr = 0
     for i in range(len(ddr)):
         v_sdr = sdr[i]
+        v_reg = reg[i]
         v_ddr = ddr[i]
-        if last_sdr != v_sdr or last_ddr != v_ddr:
+        if last_sdr != v_sdr or last_reg != v_reg or last_ddr != v_ddr:
             f.write('#%u\n' % i)
             out(f, v_sdr, len(name_sdr), sym_sdr)
+            out(f, v_reg, len(name_reg), sym_reg)
             out(f, v_ddr, len(name_ddr), sym_ddr)
             last_sdr = v_sdr
+            last_reg = v_reg
             last_ddr = v_ddr
 
     f.write('$dumpoff\n')
@@ -81,3 +94,4 @@ if __name__ == '__main__':
         sys.argv = [ '', 'sds' ]
 
     main()
+

@@ -52,13 +52,29 @@ class SDS7102(FPGA):
                                      'E4',  'L8',  'M5',  'N4'),
                              iostandard = 'SSTL18_II'),
 
-        'soc_dqs':      dict(pins = ('T9', 'M6'), iostandard = 'SSTL18_II'),
-        'soc_dm':       dict(pins = ('P11', 'T10'), iostandard = 'SSTL18_II'),
+        # All SOC signals should use the SSTL18_II IO standard but
+        # that standard isn't supported for output on bank 2.  At
+        # first Xilinx said that it was a bug in ISE that SSTL18_II
+        # couldn't be used on bank 2:
+        #
+        #     http://www.xilinx.com/support/answers/33757.html
+        #
+        # Later they said that SSTL18_II is just not supported on bank 2:
+        #
+        #     http://www.xilinx.com/support/answers/34313.html
+        #
+        # Use LVCMOS18 with the highest drive strength instead.
+
+        'soc_dqs':      dict(pins = ('T9', 'M6'), iostandard = 'LVCMOS18',
+                             drive = '16'),
+        'soc_dm':       dict(pins = ('P11', 'T10'), iostandard = 'LVCMOS18',
+                             drive = '16'),
         'soc_dq':       dict(pins = ('T7',  'L7',  'P9',  'N5',
                                      'M11', 'T3',  'M9',  'T4',
                                      'T6',  'M12', 'P4',  'N6',
                                      'N8',  'P5',  'P8',  'R5'),
-                             iostandard = 'SSTL18_II'),
+                             iostandard = 'LVCMOS18',
+                             drive = '16'),
 
         'adc_clk_p':	dict(pins = ('E7',), iostandard = 'LVDS_25'),
         'adc_clk_n':	dict(pins = ('E8',), iostandard = 'LVDS_25'),

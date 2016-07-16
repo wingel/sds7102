@@ -249,6 +249,21 @@ static int regs_release(struct inode *inode, struct file *file)
 	unsigned n;
 	int r = 0;
 
+	if (1) {
+		int i;
+		for (i = 0; i < FROB_COUNT; i++) {
+			unsigned v = (((FROB_ADDR(i) >> 1) & 0xffff) |
+				      (((FROB_ADDR(i) >> 1) + 1) << 16));
+			const char *e = "";
+
+			if (frob_data[i] != v)
+				e = " <<<< ERROR";
+
+			printk("0x%08x -> 0x%08x (0x%08x)%s\n",
+			       FROB_ADDR(i), frob_data[i], v, e);
+		}
+	}
+
 	gpio_direction_input(FPGA_INIT_B);
 	gpio_direction_input(FPGA_CCLK);
 	gpio_direction_input(FPGA_DIN);

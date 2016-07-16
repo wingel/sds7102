@@ -18,6 +18,7 @@ from wb import WbMux
 from hybrid_counter import HybridCounter
 from util import tristate
 from regfile import RegFile, Field, RwField, Port
+from ddr import Ddr, DdrBus, DdrSource, ddr_connect
 from sampler import Sampler
 from shifter import Shifter, ShifterBus
 from ram import Ram
@@ -73,6 +74,22 @@ def top(din, init_b, cclk,
 
     soc_system = System(soc_clk, None)
 
+    soc_bus = DdrBus(2, 12, 2)
+
+    soc_connect_inst = ddr_connect(
+        soc_bus, soc_clk, soc_clk_b, None,
+        soc_cs, soc_ras, soc_cas, soc_we, soc_ba, soc_a,
+        soc_dqs, soc_dm, soc_dq)
+    insts.append(soc_connect_inst)
+
+    if 1:
+        soc_source0 = DdrSource(soc_system, 16, 16)
+        soc_source1 = DdrSource(soc_system, 16, 16)
+
+        soc_ddr = Ddr(soc_source0, soc_source1)
+        soc_inst = soc_ddr.gen(soc_system, soc_bus)
+        insts.append(soc_inst)
+
     if 1:
         # Trace soc bus control signals
 
@@ -94,32 +111,18 @@ def top(din, init_b, cclk,
                                   sample_enable = soc_capture_sync)
         mux.add(soc_sdr_sampler, 0x2000)
 
-        soc_dqs_0 = Signal(intbv(0)[len(soc_dqs):])
-        soc_dqs_1 = Signal(intbv(0)[len(soc_dqs):])
-        soc_dqs_ddr_inst = iddr2('soc_dqs_iddr2',
-                                 soc_dqs, soc_dqs_0, soc_dqs_1,
-                                 c0 = soc_clk, c1 = soc_clk_b,
-                                 ddr_alignment = 'C0')
-        insts.append(soc_dqs_ddr_inst)
+        soc_reg = ConcatSignal(
+            soc_bus.A, soc_bus.BA,
+            soc_bus.WE_B, soc_bus.CAS_B, soc_bus.RAS_B, soc_bus.CS_B)
 
-        soc_dm_0 = Signal(intbv(0)[len(soc_dm):])
-        soc_dm_1 = Signal(intbv(0)[len(soc_dm):])
-        soc_dm_ddr_inst = iddr2('soc_dm_iddr2',
-                                 soc_dm, soc_dm_0, soc_dm_1,
-                                 c0 = soc_clk, c1 = soc_clk_b,
-                                 ddr_alignment = 'C0')
-        insts.append(soc_dm_ddr_inst)
+        soc_reg_sampler = Sampler(addr_depth = 0x800,
+                                   sample_clk = soc_clk,
+                                   sample_data = soc_reg,
+                                   sample_enable = soc_capture_sync)
+        mux.add(soc_reg_sampler, 0x2800)
 
-        soc_dq_0 = Signal(intbv(0)[len(soc_dq):])
-        soc_dq_1 = Signal(intbv(0)[len(soc_dq):])
-        soc_dq_ddr_inst = iddr2('soc_dq_iddr2',
-                                 soc_dq, soc_dq_0, soc_dq_1,
-                                 c0 = soc_clk, c1 = soc_clk_b,
-                                 ddr_alignment = 'C0')
-        insts.append(soc_dq_ddr_inst)
-
-        soc_ddr_0 = ConcatSignal(soc_dqs_0, soc_dm_0, soc_dq_0)
-        soc_ddr_1 = ConcatSignal(soc_dqs_1, soc_dm_1, soc_dq_1)
+        soc_ddr_0 = ConcatSignal(soc_bus.DQ1_OE, soc_bus.DQS1_O, soc_bus.DQS1_OE, soc_bus.DQ0_I, soc_bus.DM0_I, soc_bus.DQS0_I)
+        soc_ddr_1 = ConcatSignal(soc_bus.DQ0_OE, soc_bus.DQS0_O, soc_bus.DQS0_OE, soc_bus.DQ1_I, soc_bus.DM1_I, soc_bus.DQS1_I)
 
         soc_ddr_sampler_0 = Sampler(addr_depth = 0x800,
                                     sample_clk = soc_clk,

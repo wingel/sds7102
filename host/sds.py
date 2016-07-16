@@ -158,13 +158,14 @@ class SDS(object):
 
         return data
 
-    def trace_soc(self, count):
+    def soc(self, count):
         """Get a SoC bus trace"""
 
         self.write_reg(0x231, 0)
         self.write_reg(0x231, 1)
         time.sleep(0.1)
 
+        # Single Data Rate (SDR) signals
         sdr0 = self.read_regs(0x2000, count)
         sdr1 = sdr0
         sdr = numpy.dstack((sdr1, sdr0))[0].reshape(len(sdr0)+len(sdr1))
@@ -173,6 +174,16 @@ class SDS(object):
         print sdr1
         print sdr
 
+        # Registered copies of SDR signals
+        reg0 = self.read_regs(0x2000, count)
+        reg1 = reg0
+        reg = numpy.dstack((reg1, reg0))[0].reshape(len(reg0)+len(reg1))
+
+        print reg0
+        print reg1
+        print reg
+
+        # Double Data Rate DDR signals
         ddr0 = self.read_regs(0x3000, count)
         ddr1 = self.read_regs(0x3800, count)
         ddr = numpy.dstack((ddr1, ddr0))[0].reshape(len(ddr0)+len(ddr1))
@@ -181,7 +192,7 @@ class SDS(object):
         print ddr1
         print ddr
 
-        return sdr, ddr
+        return sdr, reg, ddr
 
 def main():
     sds = SDS('sds')

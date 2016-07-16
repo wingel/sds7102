@@ -462,6 +462,7 @@ def oddr2_se(name, d0, d1, q, c0, ce = _one, r = _zero, s = _zero,
     d0.read = True
     d1.read = True
     c0.read = True
+    q.driven = True
 
     if isinstance(ce, SignalType):
         ce.read = True
@@ -482,7 +483,7 @@ def oddr2_se(name, d0, d1, q, c0, ce = _one, r = _zero, s = _zero,
 
     @always_comb
     def comb():
-        q.next = d0
+        q.next = d0 or d1
 
     return comb
 
@@ -587,6 +588,77 @@ generate
 endgenerate
 '''.strip()
 
+def iodelay2_fixed(
+    name,
+    busy = '',
+    dataout = '',
+    dataout2 = '',
+    dout = '',
+    tout = '',
+    idatain = '',
+    odatain = '',
+    rst = '',
+    cal = '',
+    t = '',
+
+    counter_wraparound = 'WRAPAROUND',
+    data_rate = 'SDR',
+    delay_src = 'IDATAIN',
+    idelay_value = 0,
+    idelay2_value = 0,
+    odelay_value = 0,
+    serdes_mode = 'NONE'):
+
+    idelay_type = 'FIXED'
+
+    odatain.read = True
+    idatain.read = True
+    t.read = True
+
+    dataout.driven = True
+    dout.driven = True
+    tout.driven = True
+
+    ii = name + '_ii'
+    iname = name + '_block'
+    n = len(dout)
+
+    @always_comb
+    def comb():
+        q.next = d0
+
+    return comb
+
+iodelay2_fixed.verilog_code = r'''
+genvar $ii;
+generate
+    for ($ii = 0; $ii < $n; $ii = $ii + 1) begin : $iname
+        IODELAY2 #(
+            .COUNTER_WRAPAROUND("$counter_wraparound"),
+            .DATA_RATE("$data_rate"),
+            .DELAY_SRC("$delay_src"),
+            .IDELAY2_VALUE($idelay2_value),
+            .IDELAY_TYPE("$idelay_type"),
+            .IDELAY_VALUE($idelay_value),
+            .ODELAY_VALUE($odelay_value),
+            .SERDES_MODE("$serdes_mode")
+        )
+        IODELAY2_inst (
+            .BUSY($busy),
+            .DATAOUT($dataout[$ii]),
+            .DATAOUT2($dataout2),
+            .DOUT($dout[$ii]),
+            .TOUT($tout[$ii]),
+            .IDATAIN($idatain[$ii]),
+            .ODATAIN($odatain[$ii]),
+            .RST($rst),
+            .CAL($cal),
+            .T($t[$ii])
+        );
+    end
+endgenerate
+'''.strip()
+
 def iobuf_ddr2(name, i0, i1, ic0, ic1, o0, o1, oe0, oe1, oc0, oc1, io,
                ddr_alignment = 'NONE',
                srtype = 'SYNC'):
@@ -673,10 +745,19 @@ def iobuf_ddr2_se(name, i0, i1, o0, o1, oe0, oe1, io, c,
 
     return insts
 
-def iobuf_delay_ddr2_se(name, i0, i1, o0, o1, oe0, oe1, io, c,
-                        ddr_alignment = 'NONE',
-                        srtype = 'SYNC',
-                        odelay_value = 0):
+def iobuf_delay_ddr2_fixed(name, i0, i1, o0, o1, oe0, oe1, io, c,
+                           ddr_alignment = 'NONE',
+                           srtype = 'SYNC',
+                           odelay_value = 0):
+    i0.driven = True
+    i1.driven = True
+    o0.read = True
+    o1.read = True
+    oe0.read = True
+    oe1.read = True
+    io.driven = True
+    c.read = True
+
     i = Signal(intbv(0)[len(io):])
     o = Signal(intbv(0)[len(io):])
     t = Signal(intbv(0)[len(io):])
@@ -690,15 +771,13 @@ def iobuf_delay_ddr2_se(name, i0, i1, o0, o1, oe0, oe1, io, c,
     o2 = Signal(intbv(0)[len(io):])
     t2 = Signal(intbv(0)[len(io):])
 
-    iodelay_inst = iodelay2_se(name + '_iodelay',
+    iodelay_inst = iodelay2_fixed(name + '_iodelay',
                                dout = i, odatain = i2,
                                dataout = o2, idatain = o,
                                t = t2, tout = t,
-                               ioclk = c,
 
                                data_rate = 'DDR',
                                idelay_value = 0,
-                               idelay_type = 'FIXED',
                                odelay_value = odelay_value,
                                delay_src = 'IO',
                                )

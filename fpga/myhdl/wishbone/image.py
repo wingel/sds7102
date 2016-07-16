@@ -29,6 +29,7 @@ def top(din, init_b, cclk,
         bu2506_ld, adf4360_le, adc08d500_cs, lmh6518_cs, dac8532_sync,
         trig_p, trig_n, ba7406_vd, ba7406_hd, ac_trig,
         probe_comp, ext_trig_out,
+        i2c_scl, i2c_sda,
         bank0, bank2, bank3):
     insts = []
 
@@ -206,6 +207,7 @@ def top(din, init_b, cclk,
 
     if 1:
         pins = ConcatSignal(cclk,
+                            i2c_sda, i2c_scl,
                             ext_trig_out, probe_comp,
                             ac_trig, ba7406_hd, ba7406_vd, trig,
                             ref_clk,

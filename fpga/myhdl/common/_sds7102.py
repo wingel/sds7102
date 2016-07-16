@@ -90,8 +90,15 @@ class SDS7102(FPGA):
                              clock_dedicated_route = False,
                              ),
 
-        'bank0':        dict(pins = ("C4",  "B5",  "A5",
-                                     "C5",
+        'i2c_scl':      dict(pins = ('C4'), iostandard = 'LVCMOS33',
+                             clock_dedicated_route = False,
+                             ),
+
+        'i2c_sda':      dict(pins = ('C5'), iostandard = 'LVCMOS33',
+                             clock_dedicated_route = False,
+                             ),
+
+        'bank0':        dict(pins = ("B5",  "A5",
                                      "D6",  "C6", " B8",
                                      ),
                              iostandard = 'LVCMOS33',

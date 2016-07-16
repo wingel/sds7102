@@ -10,8 +10,7 @@
 /* this table must match the table in _sds7102.py */
 static const char *names[] = {
     /* bank0 */
-    "C4",  "B5",  "A5",
-    "C5",
+    "B5",  "A5",
     "D6",  "C6",  "B8",
 
     /* bank2 */
@@ -44,6 +43,8 @@ static const char *names[] = {
 
     "Prb",                      /* Probe compensation output */
     "Ext",                      /* External trigger output */
+
+    "SCL", "SDA",               /* AT88SC I2C SCL and SDA */
 
     "R11"                       /* CCLK */
 };

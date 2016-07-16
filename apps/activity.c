@@ -10,14 +10,10 @@
 /* this table must match the table in _sds7102.py */
 static const char *names[] = {
     /* bank0 */
-    "C4",  "A4",  "B5",  "A5",  "D5",
-    "C5",  "B6",  "A6",  "E6",
+    "C4",  "A4",  "B5",  "A5",
+    "C5",
     "D6",  "C6",  "B8",
-    "C9",  "A9",
     "E10", "C10",
-
-    /* bank1 */
-    "R12", "T12",
 
     /* bank2 */
     "T11", "M12", "M11", "T10", "N12",
@@ -41,7 +37,10 @@ static const char *names[] = {
     "A2",  "F4",  "F3",  "E4",  "E3",
     "F6",  "F5",  "B3",  "A3",
 
-    "R11"
+    "Tr1", "Tr2",               /* Triggers */
+    "Vd1", "Vd2", "Hd1", "Hd2", /* Vertical Sync, Horizonal Sync */
+
+    "R11"                       /* CCLK */
 };
 
 #define COUNT (sizeof(names) / sizeof(*names) + 5)

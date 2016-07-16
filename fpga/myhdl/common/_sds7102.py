@@ -61,22 +61,28 @@ class SDS7102(FPGA):
         'lmh6518_cs':   dict(pins = ('A7', 'C8'), iostandard = 'LVCMOS33'),
         'dac8532_sync': dict(pins = ('A8'), iostandard = 'LVCMOS33'),
 
-        'bank0':        dict(pins = ("C4",  "A4",  "B5",  "A5",  "D5",
-                                     "C5",  "B6",  "A6",  "E6",
+        'trig_p':	dict(pins = ('B6', 'C9',),
+                             clock_dedicated_route = False,
+                             iostandard = 'LVPECL_33',
+                             ),
+        'trig_n':	dict(pins = ('A6', 'A9',),
+                             clock_dedicated_route = False,
+                             iostandard = 'LVPECL_33',
+                             ),
+
+        'ba7406_vd':    dict(pins = ('D5', 'T12'), iostandard = 'LVCMOS33',
+                             clock_dedicated_route = False),
+        'ba7406_hd':    dict(pins = ('E6', 'R12'), iostandard = 'LVCMOS33',
+                             clock_dedicated_route = False),
+
+        'bank0':        dict(pins = ("C4",  "A4",  "B5",  "A5",
+                                     "C5",
                                      "D6",  "C6", " B8",
-                                     "C9",  "A9",
                                      "E10", "C10",
                                      ),
                              iostandard = 'LVCMOS33',
                              clock_dedicated_route = False,
                              pullup = True,
-                             # pulldown = True,
-                             ),
-
-        'bank1':        dict(pins = ("R12", "T12"),
-                             iostandard = 'LVCMOS18',
-                             clock_dedicated_route = False,
-                             # pullup = True,
                              # pulldown = True,
                              ),
 
@@ -111,6 +117,10 @@ class SDS7102(FPGA):
                              # pulldown = True,
                              ),
     }
+
+    extra_ucf = '''
+CONFIG VCCAUX = "3.3";
+'''
 
     for k, v in sorted(default_ports.items()):
         print k, len(v['pins'])

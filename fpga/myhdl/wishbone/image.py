@@ -26,7 +26,8 @@ def top(din, init_b, cclk,
         adc_clk_p, adc_clk_n, adc_dat_p, adc_dat_n, adc_ovr_p, adc_ovr_n,
         shifter_sck, shifter_sdo,
         bu2506_ld, adf4360_le, adc08d500_cs, lmh6518_cs, dac8532_sync,
-        bank0, bank1, bank2, bank3):
+        trig_p, trig_n, ba7406_vd, ba7406_hd,
+        bank0, bank2, bank3):
     insts = []
 
     # Clock generator using STARTUP_SPARTAN primitive
@@ -173,11 +174,15 @@ def top(din, init_b, cclk,
             addr += 1
         insts.append(shifter.gen())
 
+    trig = Signal(intbv(0)[len(trig_p):])
+    trig_inst = ibufds_vec('ibufds_trig', trig_p, trig_n, trig)
+    insts.append(trig_inst)
+
     ####################################################################
     # Random stuff
 
     if 1:
-        pins = ConcatSignal(cclk, bank3, bank2, bank1, bank0)
+        pins = ConcatSignal(cclk, ba7406_hd, ba7406_vd, trig, bank3, bank2, bank0)
         hc = HybridCounter()
         mux.add(hc, 0, pins)
 

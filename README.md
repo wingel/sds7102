@@ -174,7 +174,7 @@ to match your JTAG adapter and if you have built everything as shown
 above you should be able to just run the script to download Linux into
 RAM on the SDS7102 and execute it:
 
-    ./misc/boot-jtag.sh
+    ./host/boot-jtag.sh
 
 If you are successful you should see something like this on the serial
 console and the Linux penguin should show up on the display of the

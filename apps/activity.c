@@ -13,7 +13,7 @@ static const char *names[] = {
     "C4",  "B5",  "A5",
     "C5",
     "D6",  "C6",  "B8",
-    "E10", "C10",
+    "E10",
 
     /* bank2 */
     "T11", "M12", "M11", "T10", "N12",
@@ -36,6 +36,8 @@ static const char *names[] = {
     "C1",  "B1",  "G6",  "G5",  "B2",
     "A2",  "F4",  "F3",  "E4",  "E3",
     "F6",  "F5",  "B3",  "A3",
+
+    "Ref",                      /* 10MHz reference clock */
 
     "Tr1", "Tr2",               /* Triggers */
     "Vd1", "Vd2", "Hd1", "Hd2", /* Vertical Sync, Horizonal Sync */

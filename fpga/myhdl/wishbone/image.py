@@ -23,6 +23,7 @@ from shifter import Shifter, ShifterBus
 from ram import Ram
 
 def top(din, init_b, cclk,
+        ref_clk,
         adc_clk_p, adc_clk_n, adc_dat_p, adc_dat_n, adc_ovr_p, adc_ovr_n,
         shifter_sck, shifter_sdo,
         bu2506_ld, adf4360_le, adc08d500_cs, lmh6518_cs, dac8532_sync,
@@ -184,6 +185,7 @@ def top(din, init_b, cclk,
     if 1:
         pins = ConcatSignal(cclk,
                             ac_trig, ba7406_hd, ba7406_vd, trig,
+                            ref_clk,
                             bank3, bank2, bank0)
         hc = HybridCounter()
         mux.add(hc, 0, pins)

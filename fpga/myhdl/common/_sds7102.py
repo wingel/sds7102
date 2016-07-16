@@ -19,7 +19,7 @@ class SDS7102(FPGA):
     no_startup_jtag_clock = True
 
     default_clocks = {
-        'ref_clk':       dict(frequency = 10e6, pins = ('C10',), iostandard = 'LVCMOS33'),
+        #'ref_clk':       dict(frequency = 10e6, pins = ('C10',), iostandard = 'LVCMOS33'),
     }
 
     default_resets = {
@@ -35,6 +35,9 @@ class SDS7102(FPGA):
                              iostandard = 'LVCMOS18',
                              ),
         'din':		dict(pins = ('P10',), iostandard = 'LVCMOS18'),
+
+        'ref_clk':	dict(pins = ('C10',), iostandard = 'LVCMOS33',
+                             clock_dedicated_route = False),
 
         'adc_clk_p':	dict(pins = ('E7',), iostandard = 'LVDS_25'),
         'adc_clk_n':	dict(pins = ('E8',), iostandard = 'LVDS_25'),
@@ -82,7 +85,7 @@ class SDS7102(FPGA):
         'bank0':        dict(pins = ("C4",  "B5",  "A5",
                                      "C5",
                                      "D6",  "C6", " B8",
-                                     "E10", "C10",
+                                     "E10",
                                      ),
                              iostandard = 'LVCMOS33',
                              clock_dedicated_route = False,

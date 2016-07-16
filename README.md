@@ -142,6 +142,16 @@ directories.
     cd drivers
     make
 
+I'm using ccache to speed up repeated builds.  This is because I like
+to do a "git clean -fdx" followed by "./build.sh" to see if everything
+builds correctly from scratch.  I have placed the ccache directory
+under the .git directory so that it won't be removed when I do the
+"git clean".  If you have changed the compiler options in buildroot
+(for example the ABI or floating point options) and want to make sure
+that the new compiler is used, you can remove the ccache directory:
+
+    rm -rf .git/ccache
+
 Running
 =======
 

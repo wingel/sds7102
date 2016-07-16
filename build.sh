@@ -43,6 +43,7 @@ else
     if [ ! -f "$fpga_image" ]; then
         (cd fpga/myhdl/wishbone && ./image.py || exit 1)
     fi
+    [ -f "$fpga_image" ]
 fi
 
 target_fpga_image=buildroot/output/target/root/sds7102.bin

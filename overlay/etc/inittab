@@ -24,7 +24,13 @@ null::sysinit:/bin/hostname -F /etc/hostname
 ::sysinit:/etc/init.d/rcS
 
 # Put a getty on the serial port
-console::respawn:/sbin/getty -L  console 0 vt100 # GENERIC_SERIAL
+ttySAC0::respawn:/sbin/getty -L /dev/ttySAC0 115200 vt100
+tty1::respawn:/sbin/getty -L /dev/tty1 0 linux
+tty2::respawn:/sbin/getty -L /dev/tty2 0 linux
+tty3::respawn:/sbin/getty -L /dev/tty3 0 linux
+tty4::respawn:/sbin/getty -L /dev/tty4 0 linux
+tty5::respawn:/sbin/getty -L /dev/tty5 0 linux
+tty6::respawn:/sbin/getty -L /dev/tty6 0 linux
 
 # Stuff to do for the 3-finger salute
 ::ctrlaltdel:/sbin/reboot

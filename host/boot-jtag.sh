@@ -3,6 +3,7 @@ cd "`dirname \"$0\"`"
 
 # Kill openocd, it might be hung
 killall -9 openocd 2>/dev/null
+sleep 0.3
 /opt/openocd/bin/openocd -f openocd.cfg &
 
 # Wait for openocd to initialize and tell it to reset the SoC

@@ -1,6 +1,13 @@
 Christer Weinigel's SDS7102 repository
 ======================================
 
+NEWS
+====
+
+I've updated from the old 3.12.61 kernel to the latest stable 4.4.14
+kernel.  If you have used the old kernel you'll have to run
+"update.sh" as described below in the build section.
+
 Introduction
 ============
 
@@ -119,8 +126,14 @@ To get the latest version, run the following script:
 
     ./update.sh
 
-After cloning this repoistory, use the following command to download
-all dependencies (such as the Linux kernel) and then build everything:
+I've just updated the Linux kernel to 4.4.14, if you were using the
+old 3.12 kernel you will have to remove the .config file in the Linux
+directory:
+
+    rm linux/.config
+
+Use the following command to download all dependencies (such as the
+Linux kernel) and then build everything:
 
     ./build.sh
 

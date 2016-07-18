@@ -2,7 +2,9 @@ ifndef BUILDROOT_DIR
 BUILDROOT_DIR := $(shell cd ../buildroot && pwd)
 endif
 
+ifndef CROSS_COMPILE
 CROSS_COMPILE := "$(BUILDROOT_DIR)/output/host/usr/bin/arm-linux-"
+endif
 CC := $(CROSS_COMPILE)gcc
 
 CFLAGS := -Wall

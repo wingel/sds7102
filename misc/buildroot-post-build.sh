@@ -14,9 +14,9 @@ fi
 
 make -C linux -j 4 CROSS_COMPILE="$CROSS_COMPILE" ARCH=arm modules_prepare
 
-make -C drivers
+make -C drivers CROSS_COMPILE="$CROSS_COMPILE"
 
-make -C apps
+make -C apps CROSS_COMPILE="$CROSS_COMPILE"
 
 cp apps/{activity,sds-server} buildroot/output/target/root
 cp drivers/*.ko buildroot/output/target/root

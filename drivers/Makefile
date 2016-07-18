@@ -4,18 +4,20 @@ ifndef BUILDROOT_DIR
 BUILDROOT_DIR := $(shell cd ../buildroot && pwd)
 endif
 
+ifndef CROSS_COMPILE
+CROSS_COMPILE := "$(BUILDROOT_DIR)/output/host/usr/bin/arm-linux-"
+endif
+
 ifndef LINUX_DIR
 LINUX_DIR := $(shell cd ../linux && pwd)
 endif
 
 ARCH := arm
 
-CROSS_COMPILE := "$(BUILDROOT_DIR)/output/host/usr/bin/arm-linux-"
-
 all: modules
 
 modules:
-	$(MAKE) -C $(LINUX_DIR) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) \
+	$(MAKE) -C $(LINUX_DIR) ARCH=$(ARCH) CROSS_COMPILE="$(CROSS_COMPILE)" \
 	    M="`pwd`" modules
 
 clean:

@@ -1,6 +1,9 @@
 Christer Weinigel's SDS7102 repository
 ======================================
 
+Introduction
+============
+
 This is a port of Linux and buildroot to the OWON SDS7102
 oscilloscope.  The CPU part of the scope is a Samsung S3C2416 system
 on a chip (SoC) with a bit of memory and a connection to a Xilinx
@@ -62,12 +65,9 @@ are the following:
    busybox and uclibc that are very useful on an embedded system.
 
  * The Linux kernel provides most of the hardware support.  It is
-   branched from the tag "v3.12.61" of the [Linux stable git
+   branched from the tag "v4.4.14" of the [Linux stable git
    repository](https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git).
-   I can't remember why I started from this specific version of the
-   Linux kernel, but I probably found some Linux tree which were
-   supposed to support the s3c2416 and used that as a base for my
-   changes.
+   This was the newest longtime kernel in the stable tree at the moment.
 
  * MyHDL is a Python based hardware description language (HDL) which
    is used some FPGA images that are used for testing.  It is branched
@@ -112,11 +112,16 @@ Building
 To get a copy of this project, clone it from github with:
 
     git clone https://github.com/wingel/sds7102.git
+    cd sds7102
+
+If you have cloned this repository before you might have old versions.
+To get the latest version, run the following script:
+
+    ./update.sh
 
 After cloning this repoistory, use the following command to download
 all dependencies (such as the Linux kernel) and then build everything:
 
-    cd sds7102
     ./build.sh
 
 On my machine, an Intel i7-2600 with 32Gbytes of RAM and a Samsung 850

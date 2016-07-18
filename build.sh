@@ -2,21 +2,10 @@
 set -e
 set -x
 
-LINUX_REPO="https://github.com/wingel/linux.git"
-LINUX_BRANCH="sds7102-v4"
-
-BUILDROOT_REPO="https://github.com/wingel/buildroot.git"
-BUILDROOT_BRANCH="2015.05"
-
-MYHDL_REPO="https://github.com/wingel/myhdl.git"
-MYHDL_BRANCH="sds7102"
-
-RHEA_REPO="https://github.com/wingel/rhea.git"
-RHEA_BRANCH="sds7102"
-
-if [ -f misc/local-settings.sh ]; then
-    . misc/local-settings.sh
-fi
+cd "`dirname \"$0\"`"
+cd misc
+. settings.sh
+cd ..
 
 if [ ! -d buildroot ]; then
     git clone -b "$BUILDROOT_BRANCH" "$BUILDROOT_REPO" buildroot

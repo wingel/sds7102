@@ -44,7 +44,7 @@ fi
 
 if [ ! -f buildroot/.config ]; then
     cp misc/buildroot.config buildroot/.config
-    make -C buildroot oldconfig
 fi
 
+make -C buildroot oldconfig
 make -C buildroot

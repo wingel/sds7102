@@ -12,7 +12,7 @@ if [ ! -f linux/.config ]; then
     make -C linux CROSS_COMPILE="$CROSS_COMPILE" ARCH=arm oldconfig
 fi
 
-make -C linux -j 4 CROSS_COMPILE="$CROSS_COMPILE" ARCH=arm modules_prepare
+make -C linux -j 4 CROSS_COMPILE="$CROSS_COMPILE" ARCH=arm modules
 
 make -C drivers CROSS_COMPILE="$CROSS_COMPILE"
 

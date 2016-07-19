@@ -42,7 +42,10 @@ if [ "$fpga_image" -nt "$target_fpga_image" ]; then
     cp "$fpga_image" "$target_fpga_image"
 fi
 
-if [ ! -f buildroot/.config ]; then
+if [ misc/buildroot.config -nt buildroot/.config ]; then
+    if [ -f buildroot/.config ]; then
+	mv buildroot/.config buildroot/.config.old
+    fi
     cp misc/buildroot.config buildroot/.config
 fi
 

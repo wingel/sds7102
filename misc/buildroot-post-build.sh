@@ -7,7 +7,10 @@ cd "`dirname \"$0\"`"
 
 cd ..
 
-if [ ! -f linux/.config ]; then
+if [ misc/linux.config -nt linux/.config ]; then
+    if [ -f linux/.config ]; then
+	mv linux/.config linux/.config.old
+    fi
     cp misc/linux.config linux/.config
     make -C linux CROSS_COMPILE="$CROSS_COMPILE" ARCH=arm oldconfig
 fi

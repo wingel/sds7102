@@ -47,16 +47,16 @@ struct rmv mods[] = {
 
 /* List of GPIO registers to watch for changes. */
 struct rmv checks[] = {
-	{ "GPADAT", 0x56000004, ~0x00000000 },
+	{ "GPADAT", 0x56000004, ~0x00008003 },
 	{ "GPBDAT", 0x56000014, ~0x00000000 },
-	{ "GPCDAT", 0x56000024, ~0x0000ff1e },
-	{ "GPDDAT", 0x56000034, ~0x0000feff },
-	{ "GPEDAT", 0x56000044, ~0x00003800 },
+	{ "GPCDAT", 0x56000024, ~0x0000fffe },
+	{ "GPDDAT", 0x56000034, ~0x0000ffff },
+	{ "GPEDAT", 0x56000044, ~0x0000380a },
 	{ "GPFDAT", 0x56000054, ~0x00000002 },
 	{ "GPGDAT", 0x56000064, ~0x00000000 },
-	{ "GPHDAT", 0x56000074, ~0x00000003 },
+	{ "GPHDAT", 0x56000074, ~0x00001a03 },
 	{ "GPKDAT", 0x560000e4, ~0x000028a8 },
-	{ "GPLDAT", 0x560000f4, ~0x00000000 },
+	{ "GPLDAT", 0x560000f4, ~0x00002000 },
 	{ "GPMDAT", 0x56000104, ~0x00000000 },
 };
 

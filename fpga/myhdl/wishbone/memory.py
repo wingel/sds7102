@@ -1,7 +1,7 @@
 #! /usr/bin/python
 import hacking
 if __name__ == '__main__':
-    hacking.reexec_if_needed('image.py')
+    hacking.reexec_if_needed('memory.py')
 
 from pprint import pprint
 
@@ -17,11 +17,12 @@ from spi_slave import SpiInterface, SpiSlave
 from wb import WbMux
 from hybrid_counter import HybridCounter
 from util import tristate
-from regfile import RegFile, Field, RwField, Port
+from regfile import RegFile, Field, RoField, RwField, Port
 from ddr import Ddr, DdrBus, DdrSource, ddr_connect
 from sampler import Sampler
 from shifter import Shifter, ShifterBus
 from ram import Ram
+from mig import mig
 
 def top(din, init_b, cclk,
         ref_clk,
@@ -33,11 +34,11 @@ def top(din, init_b, cclk,
         trig_p, trig_n, ba7406_vd, ba7406_hd, ac_trig,
         probe_comp, ext_trig_out,
         i2c_scl, i2c_sda,
-#        mcb3_dram_ck, mcb3_dram_ck_n,
-#        mcb3_dram_ras_n, mcb3_dram_cas_n, mcb3_dram_we_n,
-#        mcb3_dram_ba, mcb3_dram_a, mcb3_dram_odt,
-#        mcb3_dram_dqs, mcb3_dram_udqs, mcb3_dram_dm, mcb3_dram_udm,
-#        mcb3_dram_dq,
+        mcb3_dram_ck, mcb3_dram_ck_n,
+        mcb3_dram_ras_n, mcb3_dram_cas_n, mcb3_dram_we_n,
+        mcb3_dram_ba, mcb3_dram_a, mcb3_dram_odt,
+        mcb3_dram_dqs, mcb3_dram_dqs_n, mcb3_dram_udqs, mcb3_dram_udqs_n, mcb3_dram_dm, mcb3_dram_udm,
+        mcb3_dram_dq,
         bank0, bank2):
     insts = []
 
@@ -69,77 +70,78 @@ def top(din, init_b, cclk,
     ####################################################################
     # SoC bus
 
-    soc_clk = Signal(False)
-    soc_clk_b = Signal(False)
-    soc_clk_inst = ibufgds_diff_out('ibufgds_diff_out_soc_clk', soc_clk_p, soc_clk_n, soc_clk, soc_clk_b)
-    insts.append(soc_clk_inst)
+    if 0:
+        soc_clk = Signal(False)
+        soc_clk_b = Signal(False)
+        soc_clk_inst = ibufgds_diff_out('ibufgds_diff_out_soc_clk', soc_clk_p, soc_clk_n, soc_clk, soc_clk_b)
+        insts.append(soc_clk_inst)
 
-    soc_clk._name = 'soc_clk' # Must match name of timing spec in ucf file
-    soc_clk_b._name = 'soc_clk_b' # Must match name of timing spec in ucf file
+        soc_clk._name = 'soc_clk' # Must match name of timing spec in ucf file
+        soc_clk_b._name = 'soc_clk_b' # Must match name of timing spec in ucf file
 
-    soc_system = System(soc_clk, None)
+        soc_system = System(soc_clk, None)
 
-    soc_bus = DdrBus(2, 12, 2)
+        soc_bus = DdrBus(2, 12, 2)
 
-    soc_connect_inst = ddr_connect(
-        soc_bus, soc_clk, soc_clk_b, None,
-        soc_cs, soc_ras, soc_cas, soc_we, soc_ba, soc_a,
-        soc_dqs, soc_dm, soc_dq)
-    insts.append(soc_connect_inst)
+        soc_connect_inst = ddr_connect(
+            soc_bus, soc_clk, soc_clk_b, None,
+            soc_cs, soc_ras, soc_cas, soc_we, soc_ba, soc_a,
+            soc_dqs, soc_dm, soc_dq)
+        insts.append(soc_connect_inst)
 
-    if 1:
-        soc_source0 = DdrSource(soc_system, 16, 16)
-        soc_source1 = DdrSource(soc_system, 16, 16)
+        if 1:
+            soc_source0 = DdrSource(soc_system, 16, 16)
+            soc_source1 = DdrSource(soc_system, 16, 16)
 
-        soc_ddr = Ddr(soc_source0, soc_source1)
-        soc_inst = soc_ddr.gen(soc_system, soc_bus)
-        insts.append(soc_inst)
+            soc_ddr = Ddr(soc_source0, soc_source1)
+            soc_inst = soc_ddr.gen(soc_system, soc_bus)
+            insts.append(soc_inst)
 
-    if 1:
-        # Trace soc bus control signals
+        if 1:
+            # Trace soc bus control signals
 
-        soc_capture = Signal(False)
-        soc_ctl = RegFile('soc_ctl', "SOC control", [
-            RwField(system, 'soc_capture', "Capture samples", soc_capture),
-            ])
-        mux.add(soc_ctl, 0x231)
-        soc_capture_sync = Signal(False)
-        soc_capture_sync_inst = syncro(soc_clk, soc_capture, soc_capture_sync)
-        insts.append(soc_capture_sync_inst)
+            soc_capture = Signal(False)
+            soc_ctl = RegFile('soc_ctl', "SOC control", [
+                RwField(system, 'soc_capture', "Capture samples", soc_capture),
+                ])
+            mux.add(soc_ctl, 0x231)
+            soc_capture_sync = Signal(False)
+            soc_capture_sync_inst = syncro(soc_clk, soc_capture, soc_capture_sync)
+            insts.append(soc_capture_sync_inst)
 
-        soc_sdr = ConcatSignal(
-            soc_a, soc_ba, soc_we, soc_cas, soc_ras, soc_cs)
+            soc_sdr = ConcatSignal(
+                soc_a, soc_ba, soc_we, soc_cas, soc_ras, soc_cs)
 
-        soc_sdr_sampler = Sampler(addr_depth = 0x800,
-                                  sample_clk = soc_clk,
-                                  sample_data = soc_sdr,
-                                  sample_enable = soc_capture_sync)
-        mux.add(soc_sdr_sampler, 0x2000)
+            soc_sdr_sampler = Sampler(addr_depth = 0x800,
+                                      sample_clk = soc_clk,
+                                      sample_data = soc_sdr,
+                                      sample_enable = soc_capture_sync)
+            mux.add(soc_sdr_sampler, 0x2000)
 
-        soc_reg = ConcatSignal(
-            soc_bus.A, soc_bus.BA,
-            soc_bus.WE_B, soc_bus.CAS_B, soc_bus.RAS_B, soc_bus.CS_B)
+            soc_reg = ConcatSignal(
+                soc_bus.A, soc_bus.BA,
+                soc_bus.WE_B, soc_bus.CAS_B, soc_bus.RAS_B, soc_bus.CS_B)
 
-        soc_reg_sampler = Sampler(addr_depth = 0x800,
-                                   sample_clk = soc_clk,
-                                   sample_data = soc_reg,
-                                   sample_enable = soc_capture_sync)
-        mux.add(soc_reg_sampler, 0x2800)
+            soc_reg_sampler = Sampler(addr_depth = 0x800,
+                                       sample_clk = soc_clk,
+                                       sample_data = soc_reg,
+                                       sample_enable = soc_capture_sync)
+            mux.add(soc_reg_sampler, 0x2800)
 
-        soc_ddr_0 = ConcatSignal(soc_bus.DQ1_OE, soc_bus.DQS1_O, soc_bus.DQS1_OE, soc_bus.DQ0_I, soc_bus.DM0_I, soc_bus.DQS0_I)
-        soc_ddr_1 = ConcatSignal(soc_bus.DQ0_OE, soc_bus.DQS0_O, soc_bus.DQS0_OE, soc_bus.DQ1_I, soc_bus.DM1_I, soc_bus.DQS1_I)
+            soc_ddr_0 = ConcatSignal(soc_bus.DQ1_OE, soc_bus.DQS1_O, soc_bus.DQS1_OE, soc_bus.DQ0_I, soc_bus.DM0_I, soc_bus.DQS0_I)
+            soc_ddr_1 = ConcatSignal(soc_bus.DQ0_OE, soc_bus.DQS0_O, soc_bus.DQS0_OE, soc_bus.DQ1_I, soc_bus.DM1_I, soc_bus.DQS1_I)
 
-        soc_ddr_sampler_0 = Sampler(addr_depth = 0x800,
-                                    sample_clk = soc_clk,
-                                    sample_data = soc_ddr_0,
-                                    sample_enable = soc_capture_sync)
-        mux.add(soc_ddr_sampler_0, 0x3000)
+            soc_ddr_sampler_0 = Sampler(addr_depth = 0x800,
+                                        sample_clk = soc_clk,
+                                        sample_data = soc_ddr_0,
+                                        sample_enable = soc_capture_sync)
+            mux.add(soc_ddr_sampler_0, 0x3000)
 
-        soc_ddr_sampler_1 = Sampler(addr_depth = 0x800,
-                                    sample_clk = soc_clk,
-                                    sample_data = soc_ddr_1,
-                                    sample_enable = soc_capture_sync)
-        mux.add(soc_ddr_sampler_1, 0x3800)
+            soc_ddr_sampler_1 = Sampler(addr_depth = 0x800,
+                                        sample_clk = soc_clk,
+                                        sample_data = soc_ddr_1,
+                                        sample_enable = soc_capture_sync)
+            mux.add(soc_ddr_sampler_1, 0x3800)
 
     ####################################################################
     # ADC bus
@@ -286,6 +288,33 @@ def top(din, init_b, cclk,
     insts.append(probe_comp_comb)
 
     ####################################################################
+
+    dram_rst_i = Signal(False)
+    dram_clk_p = soc_clk_p
+    dram_clk_n = soc_clk_n
+
+    dram_calib_done = Signal(False)
+    dram_error = Signal(False)
+
+    dram_ctl = RegFile('dram_ctl', "DRAM control", [
+        RwField(system, 'dram_rst_i', "Reset", dram_rst_i),
+        RoField(system, 'dram_calib_done', "Calib flag", dram_calib_done),
+        RoField(system, 'dram_error', "Error flag", dram_error),
+        ])
+    mux.add(dram_ctl, 0x250)
+
+    mig_inst = mig(
+        dram_rst_i, dram_clk_p, dram_clk_n,
+        dram_calib_done, dram_error,
+
+        mcb3_dram_ck, mcb3_dram_ck_n,
+        mcb3_dram_ras_n, mcb3_dram_cas_n, mcb3_dram_we_n,
+        mcb3_dram_ba, mcb3_dram_a, mcb3_dram_odt,
+        mcb3_dram_dqs, mcb3_dram_dqs_n, mcb3_dram_udqs, mcb3_dram_udqs_n, mcb3_dram_dm, mcb3_dram_udm,
+        mcb3_dram_dq)
+    insts.append(mig_inst)
+
+    ####################################################################
     # Random stuff
 
     if 1:
@@ -330,6 +359,35 @@ def impl():
 
     brd = get_board('sds7102')
     flow = brd.get_flow(top = top)
+    flow.name = 'memory'
+
+    flow.add_files([
+        '../../../ip/mig/rtl/example_top.v',
+        '../../../ip/mig/rtl/infrastructure.v',
+        '../../../ip/mig/rtl/mcb_controller/iodrp_controller.v',
+        '../../../ip/mig/rtl/mcb_controller/iodrp_mcb_controller.v',
+        '../../../ip/mig/rtl/mcb_controller/mcb_raw_wrapper.v',
+        '../../../ip/mig/rtl/mcb_controller/mcb_soft_calibration.v',
+        '../../../ip/mig/rtl/mcb_controller/mcb_soft_calibration_top.v',
+        '../../../ip/mig/rtl/mcb_controller/mcb_ui_top.v',
+        '../../../ip/mig/rtl/memc_tb_top.v',
+        '../../../ip/mig/rtl/memc_wrapper.v',
+        '../../../ip/mig/rtl/traffic_gen/afifo.v',
+        '../../../ip/mig/rtl/traffic_gen/cmd_gen.v',
+        '../../../ip/mig/rtl/traffic_gen/cmd_prbs_gen.v',
+        '../../../ip/mig/rtl/traffic_gen/data_prbs_gen.v',
+        '../../../ip/mig/rtl/traffic_gen/init_mem_pattern_ctr.v',
+        '../../../ip/mig/rtl/traffic_gen/mcb_flow_control.v',
+        '../../../ip/mig/rtl/traffic_gen/mcb_traffic_gen.v',
+        '../../../ip/mig/rtl/traffic_gen/rd_data_gen.v',
+        '../../../ip/mig/rtl/traffic_gen/read_data_path.v',
+        '../../../ip/mig/rtl/traffic_gen/read_posted_fifo.v',
+        '../../../ip/mig/rtl/traffic_gen/sp6_data_gen.v',
+        '../../../ip/mig/rtl/traffic_gen/tg_status.v',
+        '../../../ip/mig/rtl/traffic_gen/v6_data_gen.v',
+        '../../../ip/mig/rtl/traffic_gen/wr_data_gen.v',
+        '../../../ip/mig/rtl/traffic_gen/write_data_path.v',
+        ])
     flow.run()
     info = flow.get_utilization()
     pprint(info)

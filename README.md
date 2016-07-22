@@ -47,6 +47,12 @@ supports most of the hardware connected to the SoC:
    used to communicate with the FPGA when the bitstream has been
    loaded.  This is slow but works.
 
+* I've made some progress on getting the SoC bus and DDR memory
+  controller on the FPGA working.  The SoC bus is readonly and for the
+  moment I can't use the SoC bus and the DDR controller in the same
+  FPGA image at the same time (they use the same clock and I need to
+  figure out how to share the clock between them).
+
 Dependencies
 ============
 

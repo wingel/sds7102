@@ -197,7 +197,15 @@ class SDS(object):
 def main():
     sds = SDS('sds')
 
-    sds.capture(16)
+    # sds.capture(16)
+
+    print "0x250 -> 0x%08x" % sds.read_reg(0x250)
+
+    sds.write_reg(0x250, 0)
+
+    for i in range(10):
+        print "0x250 -> 0x%08x" % sds.read_reg(0x250)
+        time.sleep(0.1)
 
 if __name__ == '__main__':
     main()

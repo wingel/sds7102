@@ -135,6 +135,47 @@ class SDS7102(FPGA):
                              clock_dedicated_route = False,
                              ),
 
+        'mcb3_dram_ck':	    dict(pins = ('E2'),iostandard = 'DIFF_SSTL18_II'),
+        'mcb3_dram_ck_n':   dict(pins = ('E1'), iostandard = 'DIFF_SSTL18_II'),
+
+        'mcb3_dram_ras_n':  dict(pins = ('J6'), iostandard = 'SSTL18_II'),
+        'mcb3_dram_cas_n':  dict(pins = ('H5'), iostandard = 'SSTL18_II'),
+        'mcb3_dram_we_n':   dict(pins = ('C1'), iostandard = 'SSTL18_II'),
+
+        'mcb3_dram_ba':     dict(pins = ("C3",  "C2"),
+                                 iostandard = 'SSTL18_II'),
+
+        'mcb3_dram_a':      dict(pins = ('K5', 'K6', 'D1', 'L4',
+                                         'G5', 'H4', 'H3', 'D3',
+                                         'B2', 'A2', 'G6', 'E3',
+                                         'F3'),
+                                 iostandard = 'SSTL18_II'),
+
+        'mcb3_dram_odt':    dict(pins = ('L5'), iostandard = 'SSTL18_II'),
+
+        'mcb3_dram_dqs':    dict(pins = ('H2'),
+                                 iostandard = 'DIFF_SSTL18_II',
+                                 in_term = 'UNTUNED_SPLIT_25'),
+        'mcb3_dram_dqs_n':  dict(pins = ('H1'),
+                                 iostandard = 'DIFF_SSTL18_II',
+                                 in_term = 'UNTUNED_SPLIT_25'),
+        'mcb3_dram_udqs':   dict(pins = ('N3'),
+                                 iostandard = 'DIFF_SSTL18_II',
+                                 in_term = 'UNTUNED_SPLIT_25'),
+        'mcb3_dram_udqs_n': dict(pins = ('N1'),
+                                 iostandard = 'DIFF_SSTL18_II',
+                                 in_term = 'UNTUNED_SPLIT_25'),
+
+        'mcb3_dram_dm':     dict(pins = ('J4'), iostandard = 'SSTL18_II'),
+        'mcb3_dram_udm':    dict(pins = ('K3'), iostandard = 'SSTL18_II'),
+
+        'mcb3_dram_dq':     dict(pins = ('K2', 'K1', 'J3', 'J1',
+                                         'F2', 'F1', 'G3', 'G1',
+                                         'L3', 'L1', 'M2', 'M1',
+                                         'P2', 'P1', 'R2', 'R1'),
+                                 iostandard = 'SSTL18_II',
+                                 in_term = 'UNTUNED_SPLIT_25'),
+
         'bank0':        dict(pins = ("B5",  "A5",
                                      "D6",  "C6", " B8",
                                      ),
@@ -149,21 +190,6 @@ class SDS7102(FPGA):
                              clock_dedicated_route = False,
                              ),
 
-        'bank3':        dict(pins = ("R2",
-                                     "R1",  "P2",  "P1",  "N3",  "N1",
-                                     "M2",  "M1",  "L3",  "L1",  "K2",
-                                     "K1",  "J3",  "J1",  "H2",  "H1",
-                                     "G3",  "G1",  "F2",  "F1",  "K3",
-                                     "J4",  "J6",  "H5",  "H4",  "H3",
-                                     "L4",  "L5",  "E2",  "E1",  "K5",
-                                     "K6",  "C3",  "C2",  "D3",  "D1",
-                                     "C1",  "G6",  "G5",  "B2",
-                                     "A2",  "F3",  "E3"),
-                             iostandard = 'LVCMOS18',
-                             clock_dedicated_route = False,
-                             # pullup = True,
-                             # pulldown = True,
-                             ),
     }
 
     extra_ucf = '''
@@ -176,6 +202,13 @@ CONFIG PROHIBIT = T5;
 # VREF Bank 3
 CONFIG PROHIBIT = A3;
 CONFIG PROHIBIT = M3;
+
+CONFIG MCB_PERFORMANCE= STANDARD;
+
+# NET "memc?_wrapper_inst/mcb_ui_top_inst/mcb_raw_wrapper_inst/selfrefresh_mcb_mode" TIG;
+# NET "c?_pll_lock" TIG;
+# INST "memc?_wrapper_inst/mcb_ui_top_inst/mcb_raw_wrapper_inst/gen_term_calib.mcb_soft_calibration_top_inst/mcb_soft_calibration_inst/DONE_SOFTANDHARD_CAL*" TIG;
+# NET "memc?_wrapper_inst/mcb_ui_top_inst/mcb_raw_wrapper_inst/gen_term_calib.mcb_soft_calibration_top_inst/mcb_soft_calibration_inst/CKE_Train" TIG; ##This path exists for DDR2 only
 '''
 
     for k, v in sorted(default_ports.items()):

@@ -45,6 +45,7 @@ class RoField(Field):
 
         # lost signals
         self.port.DAT_O._name = 'dat_o_%u' % id(self)
+        self.port.DAT_O.driven = 1
 
         @always_comb
         def comb():

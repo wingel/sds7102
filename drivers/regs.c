@@ -67,7 +67,7 @@ static char regs_pin_requested[ARRAY_SIZE(regs_pins)];
  * is probably twiddling it; but if he's just doing it because turning
  * a knob is fun, he's frobbing it. */
 
-#define FROB 1
+#define FROB 0
 
 #if FROB
 #define FROB_COUNT 16
@@ -249,6 +249,7 @@ static int regs_release(struct inode *inode, struct file *file)
 	unsigned n;
 	int r = 0;
 
+#if FROB
 	if (1) {
 		int i;
 		for (i = 0; i < FROB_COUNT; i++) {
@@ -263,6 +264,7 @@ static int regs_release(struct inode *inode, struct file *file)
 			       FROB_ADDR(i), frob_data[i], v, e);
 		}
 	}
+#endif
 
 	gpio_direction_input(FPGA_INIT_B);
 	gpio_direction_input(FPGA_CCLK);

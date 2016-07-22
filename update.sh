@@ -9,8 +9,8 @@ cd ..
 
 cd buildroot
 git fetch
-# git checkout "$BUILDROOT_BRANCH"
-# this is a tag without any changes so far, so don't rebase
+git checkout "$BUILDROOT_BRANCH"
+# this is a tag without any changes so far, so don't try to merge
 # git merge "origin/$BUILDROOT_BRANCH"
 cd ..
 

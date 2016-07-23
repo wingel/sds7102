@@ -32,10 +32,8 @@ def main():
 
     if 1:
         samples = sds.read_regs(0x400, 1024)
-        print samples
 
-        samples = samples.reshape((len(samples) / 2, 2))
-        print samples
+        sds.fp_init()
 
         names = [ 'd[%u]' % i for i in range(64) ]
 
@@ -112,13 +110,27 @@ def main():
         with open('frontpanel.vcd', 'w') as f:
             vcd = VCDOutput(f, names)
             t = 0
+            last_ts = 0
             last = 0
-            for a, b in samples:
-                v = (b << 32) | a
+            for v in samples:
+                print "0x%08x" % v,
+
+                ts = (v >> 16) & 0xffff
+                active = (v >> 9) & 1
+                pressed = (v >> 8) & 1
+                key = v & 0xff
+
+                t += (ts - last_ts) & 0xffff
+                last_ts = ts
+
                 vcd.write_timestamp(t)
-                for i in range(64):
-                    vcd.write_bit(names[i], (v >> i) & 1)
-                t += 1
+                if active:
+                    print names[key],
+                    vcd.write_bit(names[key], pressed)
+
+                print
+
+            vcd.write_timestamp(t)
 
 if __name__ == '__main__':
     if not sys.argv[0]:

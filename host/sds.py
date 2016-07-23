@@ -213,6 +213,14 @@ class SDS(object):
             v &= ~2
         self.write_reg(0x260, v)
 
+    def fp_init(self):
+        v = self.read_reg(0x260)
+        v |= 4
+        self.write_reg(0x260, v)
+        time.sleep(0.1)
+        v &= ~4
+        self.write_reg(0x260, v)
+
     def set_green_led(self, value):
         self.set_gpio(GPF[3], value)
 

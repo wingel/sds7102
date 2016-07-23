@@ -320,6 +320,8 @@ def top(din, init_b, cclk,
     fp_red_reg = Signal(False)
     fp_white_reg = Signal(False)
 
+    fp_init = Signal(False)
+
     @always_comb
     def fp_inst():
         fp_red.next = fp_red_reg
@@ -329,12 +331,14 @@ def top(din, init_b, cclk,
     fp_ctl = RegFile('fp_ctl', "Front Panel Control", [
         RwField(system, 'fp_red', "Red LED", fp_red_reg),
         RwField(system, 'fp_white', "White LED", fp_white_reg),
+        RwField(system, 'fp_init', "Clear FP scanner", fp_init),
         ])
     mux.add(fp_ctl, 0x260)
 
-    fp_slave = FrontPanel(fp_rst, fp_clk, fp_din,
-                          prescaler = 25,
-                          addr_depth = 1024, data_width = 32)
+    fp_slave = FrontPanel(system, fp_rst, fp_clk, fp_din, fp_init,
+                          addr_depth = 1024, data_width = 32,
+                          nr_keys = 64, prescaler = 25,
+                          ts_width = 16)
     mux.add(fp_slave, 0x400)
 
     ####################################################################

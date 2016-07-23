@@ -135,6 +135,12 @@ class SDS7102(FPGA):
                              clock_dedicated_route = False,
                              ),
 
+        'fp_rst':       dict(pins = ('A5'), iostandard = 'LVCMOS33'),
+        'fp_clk':       dict(pins = ('C6'), iostandard = 'LVCMOS33'),
+        'fp_din':       dict(pins = ('B5'), iostandard = 'LVCMOS33'),
+        'fp_red':       dict(pins = ('D6'), iostandard = 'LVCMOS33'),
+        'fp_white':     dict(pins = ('B8'), iostandard = 'LVCMOS33'),
+
         'mcb3_dram_ck':	    dict(pins = ('E2'),iostandard = 'DIFF_SSTL18_II'),
         'mcb3_dram_ck_n':   dict(pins = ('E1'), iostandard = 'DIFF_SSTL18_II'),
 
@@ -175,15 +181,6 @@ class SDS7102(FPGA):
                                          'P2', 'P1', 'R2', 'R1'),
                                  iostandard = 'SSTL18_II',
                                  in_term = 'UNTUNED_SPLIT_25'),
-
-        'bank0':        dict(pins = ("B5",  "A5",
-                                     "D6",  "C6", " B8",
-                                     ),
-                             iostandard = 'LVCMOS33',
-                             clock_dedicated_route = False,
-                             pullup = True,
-                             # pulldown = True,
-                             ),
 
         'bank2':        dict(pins = ("N11"),
                              iostandard = 'LVCMOS18',

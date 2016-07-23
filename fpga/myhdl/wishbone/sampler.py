@@ -12,7 +12,7 @@ class Sampler(WbSlave):
     def __init__(self, addr_depth, sample_clk, sample_data, sample_enable,
                  skip_cnt = 0):
         data_width = len(sample_data)
-        super(Sampler, self).__init__(addr_depth, data_width, async = True)
+        super(Sampler, self).__init__(addr_depth, data_width)
 
         self.ram = [ Signal(intbv(0)[data_width:]) for _ in range(addr_depth) ]
 

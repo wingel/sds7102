@@ -143,7 +143,7 @@ GPF2	0 Input		USB Device VBUS detect, must be pulled low or
 	  		float to work (TODO check how it's done on SMDK2416),
 	  		Maybe also changes on ethernet activity (running scp)
 GPF3	1 Output	Connected to R174 next to front panel connector
-	  		Initialized at 0x82da8.  Controls Run/Stop LED
+			Initialized at 0x82da8.	 Controls green Run/Stop LED
 GPF4	0 Input		Exp pin 8
 GPF5	0 Input
 GPF6	0 Input		Changing during operation

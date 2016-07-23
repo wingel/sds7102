@@ -9,24 +9,8 @@
 
 /* this table must match the table in _sds7102.py */
 static const char *names[] = {
-    /* bank0 */
-    "B5",  "A5",
-    "D6",  "C6",  "B8",
-
     /* bank2 */
     "N11",
-
-     /* bank3 */
-    "R2",
-    "R1",  "P2",  "P1",  "N3",  "N1",
-    "M2",  "M1",  "L3",  "L1",  "K2",
-    "K1",  "J3",  "J1",  "H2",  "H1",
-    "G3",  "G1",  "F2",  "F1",  "K3",
-    "J4",  "J6",  "H5",  "H4",  "H3",
-    "L4",  "L5",  "E2",  "E1",  "K5",
-    "K6",  "C3",  "C2",  "D3",  "D1",
-    "C1",  "G6",  "G5",  "B2",
-    "A2",  "F3",  "E3",
 
     "Ref",                      /* 10MHz reference clock */
 

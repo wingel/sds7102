@@ -10,6 +10,7 @@ GPB = tuple([ 32 + i for i in range(16) ])
 GPC = tuple([ 64 + i for i in range(16) ])
 GPD = tuple([ 96 + i for i in range(16) ])
 GPE = tuple([ 128 + i for i in range(16) ])
+GPF = tuple([ 160 + i for i in range(16) ])
 GPH = tuple([ 224 + i for i in range(16) ])
 
 class SDS(object):
@@ -37,7 +38,7 @@ class SDS(object):
         return self.read_regs(addr, 1)[0]
 
     def write_regs(self, addr, data):
-        cmd = 'write_fpga 0x%x %s' % (addr, ' '.join([ hex(v) for v in data ]))
+        cmd = 'write_fpga 0x%x %s' % (addr, ' '.join([ '0x%x' % v for v in data ]))
         print cmd
         self.fo.write(cmd + '\n')
         self.fo.flush()
@@ -193,6 +194,27 @@ class SDS(object):
         print ddr
 
         return sdr, reg, ddr
+
+    def set_red_led(self, value):
+        assert value >= 0 and value <= 1
+        v = self.read_reg(0x260)
+        if value:
+            v |= 1
+        else:
+            v &= ~1
+        self.write_reg(0x260, v)
+
+    def set_white_led(self, value):
+        assert value >= 0 and value <= 1
+        v = self.read_reg(0x260)
+        if value:
+            v |= 2
+        else:
+            v &= ~2
+        self.write_reg(0x260, v)
+
+    def set_green_led(self, value):
+        self.set_gpio(GPF[3], value)
 
 def main():
     sds = SDS('sds')

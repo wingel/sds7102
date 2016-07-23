@@ -23,6 +23,7 @@ from sampler import Sampler
 from shifter import Shifter, ShifterBus
 from ram import Ram
 from mig import mig
+from frontpanel import FrontPanel
 
 def top(din, init_b, cclk,
         ref_clk,
@@ -34,12 +35,13 @@ def top(din, init_b, cclk,
         trig_p, trig_n, ba7406_vd, ba7406_hd, ac_trig,
         probe_comp, ext_trig_out,
         i2c_scl, i2c_sda,
+        fp_rst, fp_clk, fp_din, fp_red, fp_white,
         mcb3_dram_ck, mcb3_dram_ck_n,
         mcb3_dram_ras_n, mcb3_dram_cas_n, mcb3_dram_we_n,
         mcb3_dram_ba, mcb3_dram_a, mcb3_dram_odt,
         mcb3_dram_dqs, mcb3_dram_dqs_n, mcb3_dram_udqs, mcb3_dram_udqs_n,
         mcb3_dram_dm, mcb3_dram_udm, mcb3_dram_dq,
-        bank0, bank2):
+        bank2):
     insts = []
 
     # Clock generator using STARTUP_SPARTAN primitive
@@ -313,6 +315,29 @@ def top(din, init_b, cclk,
     insts.append(probe_comp_comb)
 
     ####################################################################
+    # Front panel
+
+    fp_red_reg = Signal(False)
+    fp_white_reg = Signal(False)
+
+    @always_comb
+    def fp_inst():
+        fp_red.next = fp_red_reg
+        fp_white.next = fp_white_reg
+    insts.append(fp_inst)
+
+    fp_ctl = RegFile('fp_ctl', "Front Panel Control", [
+        RwField(system, 'fp_red', "Red LED", fp_red_reg),
+        RwField(system, 'fp_white', "White LED", fp_white_reg),
+        ])
+    mux.add(fp_ctl, 0x260)
+
+    fp_slave = FrontPanel(fp_rst, fp_clk, fp_din,
+                          prescaler = 25,
+                          addr_depth = 1024, data_width = 32)
+    mux.add(fp_slave, 0x400)
+
+    ####################################################################
     # Random stuff
 
     if 1:
@@ -321,7 +346,7 @@ def top(din, init_b, cclk,
                             ext_trig_out, probe_comp,
                             ac_trig, ba7406_hd, ba7406_vd, trig,
                             ref_clk,
-                            bank2, bank0)
+                            bank2)
         hc = HybridCounter()
         mux.add(hc, 0, pins)
 

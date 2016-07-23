@@ -39,7 +39,7 @@ def top(din, init_b, cclk,
         mcb3_dram_ba, mcb3_dram_a, mcb3_dram_odt,
         mcb3_dram_dqs, mcb3_dram_dqs_n, mcb3_dram_udqs, mcb3_dram_udqs_n, mcb3_dram_dm, mcb3_dram_udm,
         mcb3_dram_dq,
-        bank0, bank2):
+        bank2):
     insts = []
 
     # Clock generator using STARTUP_SPARTAN primitive
@@ -323,7 +323,7 @@ def top(din, init_b, cclk,
                             ext_trig_out, probe_comp,
                             ac_trig, ba7406_hd, ba7406_vd, trig,
                             ref_clk,
-                            bank2, bank0)
+                            bank2)
         hc = HybridCounter()
         mux.add(hc, 0, pins)
 

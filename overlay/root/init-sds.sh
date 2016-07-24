@@ -1,12 +1,12 @@
 #! /bin/sh
 set -x
 
-rmmod fpga
-rmmod gpios
-rmmod regs
-insmod fpga.ko
-insmod gpios.ko
-insmod regs.ko
+/sbin/rmmod fpga
+/sbin/rmmod gpios
+/sbin/rmmod regs
+/sbin/insmod fpga.ko
+/sbin/insmod gpios.ko
+/sbin/insmod regs.ko
 
 echo "Loading FPGA"
 cat sds7102.bin >/dev/fpga

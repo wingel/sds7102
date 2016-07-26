@@ -77,7 +77,7 @@ module infrastructure #
    parameter C_CLKOUT3_DIVIDE   = 8,
    parameter C_CLKFBOUT_MULT    = 2,
    parameter C_DIVCLK_DIVIDE    = 1
-   
+
    )
   (
    input  sys_clk_p,
@@ -227,7 +227,7 @@ module infrastructure #
            .LOCKED      (locked)
            );
 
- 
+
 
    BUFG U_BUFG_CLK0
     (
@@ -245,18 +245,18 @@ module infrastructure #
   always @(posedge mcb_drp_clk , posedge sys_rst)
       if(sys_rst)
          powerup_pll_locked <= 1'b0;
-       
+
       else if (bufpll_mcb_locked)
          powerup_pll_locked <= 1'b1;
-         
+
 
   always @(posedge clk0_bufg , posedge sys_rst)
       if(sys_rst)
          syn_clk0_powerup_pll_locked <= 1'b0;
-       
+
       else if (bufpll_mcb_locked)
          syn_clk0_powerup_pll_locked <= 1'b1;
-         
+
 
   //***************************************************************************
   // Reset synchronization
@@ -269,7 +269,7 @@ module infrastructure #
   //      reset deassertion is synchronous.
   //   3. asynchronous reset only look at pll_lock from PLL during power up. After
   //      power up and pll_lock is asserted, the powerup_pll_locked will be asserted
-  //      forever until sys_rst is asserted again. PLL will lose lock when FPGA 
+  //      forever until sys_rst is asserted again. PLL will lose lock when FPGA
   //      enters suspend mode. We don't want reset to MCB get
   //      asserted in the application that needs suspend feature.
   //***************************************************************************
@@ -290,16 +290,16 @@ module infrastructure #
   assign rst0    = rst0_sync_r[RST_SYNC_NUM-1];
 
 
-BUFPLL_MCB BUFPLL_MCB1 
-( .IOCLK0         (sysclk_2x),  
-  .IOCLK1         (sysclk_2x_180),       
+BUFPLL_MCB BUFPLL_MCB1
+( .IOCLK0         (sysclk_2x),
+  .IOCLK1         (sysclk_2x_180),
   .LOCKED         (locked),
   .GCLK           (mcb_drp_clk),
-  .SERDESSTROBE0  (pll_ce_0), 
-  .SERDESSTROBE1  (pll_ce_90), 
-  .PLLIN0         (clk_2x_0),  
+  .SERDESSTROBE0  (pll_ce_0),
+  .SERDESSTROBE1  (pll_ce_90),
+  .PLLIN0         (clk_2x_0),
   .PLLIN1         (clk_2x_180),
-  .LOCK           (bufpll_mcb_locked) 
+  .LOCK           (bufpll_mcb_locked)
   );
 
 

@@ -57,8 +57,8 @@
 //  \___\/\___\
 //
 //Device           : Spartan-6
-//Design Name      : DDR/DDR2/DDR3/LPDDR 
-//Purpose          : This is a template file for the design top module. This module contains 
+//Design Name      : DDR/DDR2/DDR3/LPDDR
+//Purpose          : This is a template file for the design top module. This module contains
 //                   all the four memory controllers and the two infrastructures. However,
 //                   only the enabled modules will be active and others inactive.
 //Reference        :
@@ -73,36 +73,36 @@ module example_top #
    parameter C3_P0_DATA_PORT_SIZE      = 32,
    parameter C3_P1_MASK_SIZE           = 4,
    parameter C3_P1_DATA_PORT_SIZE      = 32,
-   parameter DEBUG_EN                = 0,       
+   parameter DEBUG_EN                = 0,
                                        // # = 1, Enable debug signals/controls,
                                        //   = 0, Disable debug signals/controls.
-   parameter C3_MEMCLK_PERIOD        = 3000,       
+   parameter C3_MEMCLK_PERIOD        = 3000,
                                        // Memory data transfer clock period
-   parameter C3_CALIB_SOFT_IP        = "TRUE",       
+   parameter C3_CALIB_SOFT_IP        = "TRUE",
                                        // # = TRUE, Enables the soft calibration logic,
                                        // # = FALSE, Disables the soft calibration logic.
-   parameter C3_SIMULATION           = "FALSE",       
+   parameter C3_SIMULATION           = "FALSE",
                                        // # = TRUE, Simulating the design. Useful to reduce the simulation time,
                                        // # = FALSE, Implementing the design.
-   parameter C3_HW_TESTING           = "FALSE",       
+   parameter C3_HW_TESTING           = "FALSE",
                                        // Determines the address space accessed by the traffic generator,
                                        // # = FALSE, Smaller address space,
                                        // # = TRUE, Large address space.
-   parameter C3_RST_ACT_LOW          = 0,       
+   parameter C3_RST_ACT_LOW          = 0,
                                        // # = 1 for active low reset,
                                        // # = 0 for active high reset.
-   parameter C3_INPUT_CLK_TYPE       = "DIFFERENTIAL",       
+   parameter C3_INPUT_CLK_TYPE       = "DIFFERENTIAL",
                                        // input clock type DIFFERENTIAL or SINGLE_ENDED
-   parameter C3_MEM_ADDR_ORDER       = "ROW_BANK_COLUMN",       
+   parameter C3_MEM_ADDR_ORDER       = "ROW_BANK_COLUMN",
                                        // The order in which user address is provided to the memory controller,
                                        // ROW_BANK_COLUMN or BANK_ROW_COLUMN
-   parameter C3_NUM_DQ_PINS          = 16,       
+   parameter C3_NUM_DQ_PINS          = 16,
                                        // External memory data width
-   parameter C3_MEM_ADDR_WIDTH       = 13,       
+   parameter C3_MEM_ADDR_WIDTH       = 13,
                                        // External memory address width
-   parameter C3_MEM_BANKADDR_WIDTH   = 2        
+   parameter C3_MEM_BANKADDR_WIDTH   = 2
                                        // External memory bank address width
-)	
+)
 
 (
    output                                           calib_done,
@@ -131,10 +131,10 @@ module example_top #
 // The parameter CX_PORT_ENABLE shows all the active user ports in the design.
 // For example, the value 6'b111100 tells that only port-2, port-3, port-4
 // and port-5 are enabled. The other two ports are inactive. An inactive port
-// can be a disabled port or an invisible logical port. Few examples to the 
+// can be a disabled port or an invisible logical port. Few examples to the
 // invisible logical port are port-4 and port-5 in the user port configuration,
 // Config-2: Four 32-bit bi-directional ports and the ports port-2 through
-// port-5 in Config-4: Two 64-bit bi-directional ports. Please look into the 
+// port-5 in Config-4: Two 64-bit bi-directional ports. Please look into the
 // Chapter-2 of ug388.pdf in the /docs directory for further details.
    localparam C3_PORT_ENABLE              = 6'b001111;
    localparam C3_PORT_CONFIG             =  "B32_B32_B32_B32";
@@ -144,81 +144,81 @@ module example_top #
    localparam C3_P3_PORT_MODE             =  "BI_MODE";
    localparam C3_P4_PORT_MODE             =  "NONE";
    localparam C3_P5_PORT_MODE             =  "NONE";
-   localparam C3_CLKOUT0_DIVIDE       = 1;       
-   localparam C3_CLKOUT1_DIVIDE       = 1;       
-   localparam C3_CLKOUT2_DIVIDE       = 20;       
-   localparam C3_CLKOUT3_DIVIDE       = 10;       
-   localparam C3_CLKFBOUT_MULT        = 5;       
-   localparam C3_DIVCLK_DIVIDE        = 1;       
-   localparam C3_ARB_ALGORITHM        = 0;       
-   localparam C3_ARB_NUM_TIME_SLOTS   = 12;       
-   localparam C3_ARB_TIME_SLOT_0      = 12'o0123;       
-   localparam C3_ARB_TIME_SLOT_1      = 12'o1230;       
-   localparam C3_ARB_TIME_SLOT_2      = 12'o2301;       
-   localparam C3_ARB_TIME_SLOT_3      = 12'o3012;       
-   localparam C3_ARB_TIME_SLOT_4      = 12'o0123;       
-   localparam C3_ARB_TIME_SLOT_5      = 12'o1230;       
-   localparam C3_ARB_TIME_SLOT_6      = 12'o2301;       
-   localparam C3_ARB_TIME_SLOT_7      = 12'o3012;       
-   localparam C3_ARB_TIME_SLOT_8      = 12'o0123;       
-   localparam C3_ARB_TIME_SLOT_9      = 12'o1230;       
-   localparam C3_ARB_TIME_SLOT_10     = 12'o2301;       
-   localparam C3_ARB_TIME_SLOT_11     = 12'o3012;       
-   localparam C3_MEM_TRAS             = 45000;       
-   localparam C3_MEM_TRCD             = 15000;       
-   localparam C3_MEM_TREFI            = 7800000;       
-   localparam C3_MEM_TRFC             = 105000;       
-   localparam C3_MEM_TRP              = 15000;       
-   localparam C3_MEM_TWR              = 15000;       
-   localparam C3_MEM_TRTP             = 7500;       
-   localparam C3_MEM_TWTR             = 7500;       
-   localparam C3_MEM_TYPE             = "DDR2";       
-   localparam C3_MEM_DENSITY          = "512Mb";       
-   localparam C3_MEM_BURST_LEN        = 4;       
-   localparam C3_MEM_CAS_LATENCY      = 5;       
-   localparam C3_MEM_NUM_COL_BITS     = 10;       
-   localparam C3_MEM_DDR1_2_ODS       = "FULL";       
-   localparam C3_MEM_DDR2_RTT         = "50OHMS";       
-   localparam C3_MEM_DDR2_DIFF_DQS_EN  = "YES";       
-   localparam C3_MEM_DDR2_3_PA_SR     = "FULL";       
-   localparam C3_MEM_DDR2_3_HIGH_TEMP_SR  = "NORMAL";       
-   localparam C3_MEM_DDR3_CAS_LATENCY  = 6;       
-   localparam C3_MEM_DDR3_ODS         = "DIV6";       
-   localparam C3_MEM_DDR3_RTT         = "DIV2";       
-   localparam C3_MEM_DDR3_CAS_WR_LATENCY  = 5;       
-   localparam C3_MEM_DDR3_AUTO_SR     = "ENABLED";       
-   localparam C3_MEM_MOBILE_PA_SR     = "FULL";       
-   localparam C3_MEM_MDDR_ODS         = "FULL";       
-   localparam C3_MC_CALIB_BYPASS      = "NO";       
-   localparam C3_MC_CALIBRATION_MODE  = "CALIBRATION";       
-   localparam C3_MC_CALIBRATION_DELAY  = "HALF";       
-   localparam C3_SKIP_IN_TERM_CAL     = 1;       
-   localparam C3_SKIP_DYNAMIC_CAL     = 0;       
-   localparam C3_LDQSP_TAP_DELAY_VAL  = 0;       
-   localparam C3_LDQSN_TAP_DELAY_VAL  = 0;       
-   localparam C3_UDQSP_TAP_DELAY_VAL  = 0;       
-   localparam C3_UDQSN_TAP_DELAY_VAL  = 0;       
-   localparam C3_DQ0_TAP_DELAY_VAL    = 0;       
-   localparam C3_DQ1_TAP_DELAY_VAL    = 0;       
-   localparam C3_DQ2_TAP_DELAY_VAL    = 0;       
-   localparam C3_DQ3_TAP_DELAY_VAL    = 0;       
-   localparam C3_DQ4_TAP_DELAY_VAL    = 0;       
-   localparam C3_DQ5_TAP_DELAY_VAL    = 0;       
-   localparam C3_DQ6_TAP_DELAY_VAL    = 0;       
-   localparam C3_DQ7_TAP_DELAY_VAL    = 0;       
-   localparam C3_DQ8_TAP_DELAY_VAL    = 0;       
-   localparam C3_DQ9_TAP_DELAY_VAL    = 0;       
-   localparam C3_DQ10_TAP_DELAY_VAL   = 0;       
-   localparam C3_DQ11_TAP_DELAY_VAL   = 0;       
-   localparam C3_DQ12_TAP_DELAY_VAL   = 0;       
-   localparam C3_DQ13_TAP_DELAY_VAL   = 0;       
-   localparam C3_DQ14_TAP_DELAY_VAL   = 0;       
-   localparam C3_DQ15_TAP_DELAY_VAL   = 0;       
-   localparam C3_MCB_USE_EXTERNAL_BUFPLL  = 1;       
+   localparam C3_CLKOUT0_DIVIDE       = 1;
+   localparam C3_CLKOUT1_DIVIDE       = 1;
+   localparam C3_CLKOUT2_DIVIDE       = 20;
+   localparam C3_CLKOUT3_DIVIDE       = 10;
+   localparam C3_CLKFBOUT_MULT        = 5;
+   localparam C3_DIVCLK_DIVIDE        = 1;
+   localparam C3_ARB_ALGORITHM        = 0;
+   localparam C3_ARB_NUM_TIME_SLOTS   = 12;
+   localparam C3_ARB_TIME_SLOT_0      = 12'o0123;
+   localparam C3_ARB_TIME_SLOT_1      = 12'o1230;
+   localparam C3_ARB_TIME_SLOT_2      = 12'o2301;
+   localparam C3_ARB_TIME_SLOT_3      = 12'o3012;
+   localparam C3_ARB_TIME_SLOT_4      = 12'o0123;
+   localparam C3_ARB_TIME_SLOT_5      = 12'o1230;
+   localparam C3_ARB_TIME_SLOT_6      = 12'o2301;
+   localparam C3_ARB_TIME_SLOT_7      = 12'o3012;
+   localparam C3_ARB_TIME_SLOT_8      = 12'o0123;
+   localparam C3_ARB_TIME_SLOT_9      = 12'o1230;
+   localparam C3_ARB_TIME_SLOT_10     = 12'o2301;
+   localparam C3_ARB_TIME_SLOT_11     = 12'o3012;
+   localparam C3_MEM_TRAS             = 45000;
+   localparam C3_MEM_TRCD             = 15000;
+   localparam C3_MEM_TREFI            = 7800000;
+   localparam C3_MEM_TRFC             = 105000;
+   localparam C3_MEM_TRP              = 15000;
+   localparam C3_MEM_TWR              = 15000;
+   localparam C3_MEM_TRTP             = 7500;
+   localparam C3_MEM_TWTR             = 7500;
+   localparam C3_MEM_TYPE             = "DDR2";
+   localparam C3_MEM_DENSITY          = "512Mb";
+   localparam C3_MEM_BURST_LEN        = 4;
+   localparam C3_MEM_CAS_LATENCY      = 5;
+   localparam C3_MEM_NUM_COL_BITS     = 10;
+   localparam C3_MEM_DDR1_2_ODS       = "FULL";
+   localparam C3_MEM_DDR2_RTT         = "50OHMS";
+   localparam C3_MEM_DDR2_DIFF_DQS_EN  = "YES";
+   localparam C3_MEM_DDR2_3_PA_SR     = "FULL";
+   localparam C3_MEM_DDR2_3_HIGH_TEMP_SR  = "NORMAL";
+   localparam C3_MEM_DDR3_CAS_LATENCY  = 6;
+   localparam C3_MEM_DDR3_ODS         = "DIV6";
+   localparam C3_MEM_DDR3_RTT         = "DIV2";
+   localparam C3_MEM_DDR3_CAS_WR_LATENCY  = 5;
+   localparam C3_MEM_DDR3_AUTO_SR     = "ENABLED";
+   localparam C3_MEM_MOBILE_PA_SR     = "FULL";
+   localparam C3_MEM_MDDR_ODS         = "FULL";
+   localparam C3_MC_CALIB_BYPASS      = "NO";
+   localparam C3_MC_CALIBRATION_MODE  = "CALIBRATION";
+   localparam C3_MC_CALIBRATION_DELAY  = "HALF";
+   localparam C3_SKIP_IN_TERM_CAL     = 1;
+   localparam C3_SKIP_DYNAMIC_CAL     = 0;
+   localparam C3_LDQSP_TAP_DELAY_VAL  = 0;
+   localparam C3_LDQSN_TAP_DELAY_VAL  = 0;
+   localparam C3_UDQSP_TAP_DELAY_VAL  = 0;
+   localparam C3_UDQSN_TAP_DELAY_VAL  = 0;
+   localparam C3_DQ0_TAP_DELAY_VAL    = 0;
+   localparam C3_DQ1_TAP_DELAY_VAL    = 0;
+   localparam C3_DQ2_TAP_DELAY_VAL    = 0;
+   localparam C3_DQ3_TAP_DELAY_VAL    = 0;
+   localparam C3_DQ4_TAP_DELAY_VAL    = 0;
+   localparam C3_DQ5_TAP_DELAY_VAL    = 0;
+   localparam C3_DQ6_TAP_DELAY_VAL    = 0;
+   localparam C3_DQ7_TAP_DELAY_VAL    = 0;
+   localparam C3_DQ8_TAP_DELAY_VAL    = 0;
+   localparam C3_DQ9_TAP_DELAY_VAL    = 0;
+   localparam C3_DQ10_TAP_DELAY_VAL   = 0;
+   localparam C3_DQ11_TAP_DELAY_VAL   = 0;
+   localparam C3_DQ12_TAP_DELAY_VAL   = 0;
+   localparam C3_DQ13_TAP_DELAY_VAL   = 0;
+   localparam C3_DQ14_TAP_DELAY_VAL   = 0;
+   localparam C3_DQ15_TAP_DELAY_VAL   = 0;
+   localparam C3_MCB_USE_EXTERNAL_BUFPLL  = 1;
    localparam C3_SMALL_DEVICE         = "TRUE";       // The parameter is set to TRUE for all packages of xc6slx9 device
                                                        // as most of them cannot fit the complete example design when the
                                                        // Chip scope modules are enabled
-   localparam C3_INCLK_PERIOD         = ((C3_MEMCLK_PERIOD * C3_CLKFBOUT_MULT) / (C3_DIVCLK_DIVIDE * C3_CLKOUT0_DIVIDE * 2));       
+   localparam C3_INCLK_PERIOD         = ((C3_MEMCLK_PERIOD * C3_CLKFBOUT_MULT) / (C3_DIVCLK_DIVIDE * C3_CLKOUT0_DIVIDE * 2));
    localparam C3_p0_BEGIN_ADDRESS                   = (C3_HW_TESTING == "TRUE") ? 32'h01000000:32'h00000100;
    localparam C3_p0_DATA_MODE                       = 4'b0010;
    localparam C3_p0_END_ADDRESS                     = (C3_HW_TESTING == "TRUE") ? 32'h02ffffff:32'h000002ff;
@@ -483,7 +483,7 @@ assign  c3_sys_clk = 1'b0;
          .sys_clk_p                      (c3_sys_clk_p),  // [input] differential p type clock from board
          .sys_clk_n                      (c3_sys_clk_n),  // [input] differential n type clock from board
          .sys_clk                        (c3_sys_clk),    // [input] single ended input clock from board
-         .sys_rst_i                      (c3_sys_rst_i),  
+         .sys_rst_i                      (c3_sys_rst_i),
          .clk0                           (c3_clk0),       // [output] user clock which determines the operating frequency of user interface ports
          .rst0                           (c3_rst0),
          .async_rst                      (c3_async_rst),
@@ -494,13 +494,13 @@ assign  c3_sys_clk = 1'b0;
          .pll_lock                       (c3_pll_lock),
          .mcb_drp_clk                    (c3_mcb_drp_clk)
       );
-   
+
 
 
 // Controller-3 instantiation
       memc_wrapper #
       (
-         .C_MEMCLK_PERIOD                (C3_MEMCLK_PERIOD),   
+         .C_MEMCLK_PERIOD                (C3_MEMCLK_PERIOD),
          .C_CALIB_SOFT_IP                (C3_CALIB_SOFT_IP),
          //synthesis translate_off
          .C_SIMULATION                   (C3_SIMULATION),
@@ -580,40 +580,40 @@ assign  c3_sys_clk = 1'b0;
          .C_P1_MASK_SIZE                 (C3_P1_MASK_SIZE),
          .C_P1_DATA_PORT_SIZE            (C3_P1_DATA_PORT_SIZE)
 	)
-      
+
       memc3_wrapper_inst
       (
-         .mcbx_dram_addr                 (mcb3_dram_a), 
+         .mcbx_dram_addr                 (mcb3_dram_a),
          .mcbx_dram_ba                   (mcb3_dram_ba),
-         .mcbx_dram_ras_n                (mcb3_dram_ras_n), 
-         .mcbx_dram_cas_n                (mcb3_dram_cas_n), 
-         .mcbx_dram_we_n                 (mcb3_dram_we_n), 
-         .mcbx_dram_cke                  (mcb3_dram_cke), 
-         .mcbx_dram_clk                  (mcb3_dram_ck), 
-         .mcbx_dram_clk_n                (mcb3_dram_ck_n), 
+         .mcbx_dram_ras_n                (mcb3_dram_ras_n),
+         .mcbx_dram_cas_n                (mcb3_dram_cas_n),
+         .mcbx_dram_we_n                 (mcb3_dram_we_n),
+         .mcbx_dram_cke                  (mcb3_dram_cke),
+         .mcbx_dram_clk                  (mcb3_dram_ck),
+         .mcbx_dram_clk_n                (mcb3_dram_ck_n),
          .mcbx_dram_dq                   (mcb3_dram_dq),
-         .mcbx_dram_dqs                  (mcb3_dram_dqs), 
-         .mcbx_dram_dqs_n                (mcb3_dram_dqs_n), 
-         .mcbx_dram_udqs                 (mcb3_dram_udqs), 
-         .mcbx_dram_udqs_n               (mcb3_dram_udqs_n), 
-         .mcbx_dram_udm                  (mcb3_dram_udm), 
-         .mcbx_dram_ldm                  (mcb3_dram_dm), 
-         .mcbx_dram_odt                  (mcb3_dram_odt), 
-         .mcbx_dram_ddr3_rst             ( ), 
+         .mcbx_dram_dqs                  (mcb3_dram_dqs),
+         .mcbx_dram_dqs_n                (mcb3_dram_dqs_n),
+         .mcbx_dram_udqs                 (mcb3_dram_udqs),
+         .mcbx_dram_udqs_n               (mcb3_dram_udqs_n),
+         .mcbx_dram_udm                  (mcb3_dram_udm),
+         .mcbx_dram_ldm                  (mcb3_dram_dm),
+         .mcbx_dram_odt                  (mcb3_dram_odt),
+         .mcbx_dram_ddr3_rst             ( ),
          .mcbx_rzq                       (mcb3_rzq),
          .mcbx_zio                       (mcb3_zio),
          .calib_done                     (c3_calib_done),
          .async_rst                      (c3_async_rst),
-         .sysclk_2x                      (c3_sysclk_2x), 
-         .sysclk_2x_180                  (c3_sysclk_2x_180), 
+         .sysclk_2x                      (c3_sysclk_2x),
+         .sysclk_2x_180                  (c3_sysclk_2x_180),
          .pll_ce_0                       (c3_pll_ce_0),
-         .pll_ce_90                      (c3_pll_ce_90), 
+         .pll_ce_90                      (c3_pll_ce_90),
          .pll_lock                       (c3_pll_lock),
-         .mcb_drp_clk                    (c3_mcb_drp_clk), 
-     
+         .mcb_drp_clk                    (c3_mcb_drp_clk),
+
          // The following port map shows all the six logical user ports. However, all
-	 // of them may not be active in this design. A port should be enabled to 
-	 // validate its port map. If it is not,the complete port is going to float 
+	 // of them may not be active in this design. A port should be enabled to
+	 // validate its port map. If it is not,the complete port is going to float
 	 // by getting disconnected from the lower level MCB modules. The port enable
 	 // information of a controller can be obtained from the corresponding local
 	 // parameter CX_PORT_ENABLE. In such a case, we can simply ignore its port map.
@@ -624,18 +624,18 @@ assign  c3_sys_clk = 1'b0;
 	 // Config-4: Two 64-bit bi-directional ports
 	 // Config-5: One 128-bit bi-directional port
 
-         // User Port-0 command interface will be active only when the port is enabled in 
+         // User Port-0 command interface will be active only when the port is enabled in
          // the port configurations Config-1, Config-2, Config-3, Config-4 and Config-5
-         .p0_cmd_clk                     (c3_clk0), 
-         .p0_cmd_en                      (c3_p0_cmd_en), 
+         .p0_cmd_clk                     (c3_clk0),
+         .p0_cmd_en                      (c3_p0_cmd_en),
          .p0_cmd_instr                   (c3_p0_cmd_instr),
-         .p0_cmd_bl                      (c3_p0_cmd_bl), 
-         .p0_cmd_byte_addr               (c3_p0_cmd_byte_addr), 
+         .p0_cmd_bl                      (c3_p0_cmd_bl),
+         .p0_cmd_byte_addr               (c3_p0_cmd_byte_addr),
          .p0_cmd_full                    (c3_p0_cmd_full),
          .p0_cmd_empty                   (c3_p0_cmd_empty),
          // User Port-0 data write interface will be active only when the port is enabled in
          // the port configurations Config-1, Config-2, Config-3, Config-4 and Config-5
-         .p0_wr_clk                      (c3_clk0), 
+         .p0_wr_clk                      (c3_clk0),
          .p0_wr_en                       (c3_p0_wr_en),
          .p0_wr_mask                     (c3_p0_wr_mask),
          .p0_wr_data                     (c3_p0_wr_data),
@@ -646,7 +646,7 @@ assign  c3_sys_clk = 1'b0;
          .p0_wr_error                    (c3_p0_wr_error),
          // User Port-0 data read interface will be active only when the port is enabled in
          // the port configurations Config-1, Config-2, Config-3, Config-4 and Config-5
-         .p0_rd_clk                      (c3_clk0), 
+         .p0_rd_clk                      (c3_clk0),
          .p0_rd_en                       (c3_p0_rd_en),
          .p0_rd_data                     (c3_p0_rd_data),
          .p0_rd_empty                    (c3_p0_rd_empty),
@@ -654,19 +654,19 @@ assign  c3_sys_clk = 1'b0;
          .p0_rd_full                     (c3_p0_rd_full),
          .p0_rd_overflow                 (c3_p0_rd_overflow),
          .p0_rd_error                    (c3_p0_rd_error),
- 
-         // User Port-1 command interface will be active only when the port is enabled in 
+
+         // User Port-1 command interface will be active only when the port is enabled in
          // the port configurations Config-1, Config-2, Config-3 and Config-4
-         .p1_cmd_clk                     (c3_clk0), 
-         .p1_cmd_en                      (c3_p1_cmd_en), 
+         .p1_cmd_clk                     (c3_clk0),
+         .p1_cmd_en                      (c3_p1_cmd_en),
          .p1_cmd_instr                   (c3_p1_cmd_instr),
-         .p1_cmd_bl                      (c3_p1_cmd_bl), 
-         .p1_cmd_byte_addr               (c3_p1_cmd_byte_addr), 
+         .p1_cmd_bl                      (c3_p1_cmd_bl),
+         .p1_cmd_byte_addr               (c3_p1_cmd_byte_addr),
          .p1_cmd_full                    (c3_p1_cmd_full),
          .p1_cmd_empty                   (c3_p1_cmd_empty),
-         // User Port-1 data write interface will be active only when the port is enabled in 
+         // User Port-1 data write interface will be active only when the port is enabled in
          // the port configurations Config-1, Config-2, Config-3 and Config-4
-         .p1_wr_clk                      (c3_clk0), 
+         .p1_wr_clk                      (c3_clk0),
          .p1_wr_en                       (c3_p1_wr_en),
          .p1_wr_mask                     (c3_p1_wr_mask),
          .p1_wr_data                     (c3_p1_wr_data),
@@ -675,9 +675,9 @@ assign  c3_sys_clk = 1'b0;
          .p1_wr_empty                    (c3_p1_wr_empty),
          .p1_wr_underrun                 (c3_p1_wr_underrun),
          .p1_wr_error                    (c3_p1_wr_error),
-         // User Port-1 data read interface will be active only when the port is enabled in 
+         // User Port-1 data read interface will be active only when the port is enabled in
          // the port configurations Config-1, Config-2, Config-3 and Config-4
-         .p1_rd_clk                      (c3_clk0), 
+         .p1_rd_clk                      (c3_clk0),
          .p1_rd_en                       (c3_p1_rd_en),
          .p1_rd_data                     (c3_p1_rd_data),
          .p1_rd_empty                    (c3_p1_rd_empty),
@@ -685,19 +685,19 @@ assign  c3_sys_clk = 1'b0;
          .p1_rd_full                     (c3_p1_rd_full),
          .p1_rd_overflow                 (c3_p1_rd_overflow),
          .p1_rd_error                    (c3_p1_rd_error),
-      
-         // User Port-2 command interface will be active only when the port is enabled in 
+
+         // User Port-2 command interface will be active only when the port is enabled in
          // the port configurations Config-1, Config-2 and Config-3
-         .p2_cmd_clk                     (c3_clk0), 
-         .p2_cmd_en                      (c3_p2_cmd_en), 
+         .p2_cmd_clk                     (c3_clk0),
+         .p2_cmd_en                      (c3_p2_cmd_en),
          .p2_cmd_instr                   (c3_p2_cmd_instr),
-         .p2_cmd_bl                      (c3_p2_cmd_bl), 
-         .p2_cmd_byte_addr               (c3_p2_cmd_byte_addr), 
+         .p2_cmd_bl                      (c3_p2_cmd_bl),
+         .p2_cmd_byte_addr               (c3_p2_cmd_byte_addr),
          .p2_cmd_full                    (c3_p2_cmd_full),
          .p2_cmd_empty                   (c3_p2_cmd_empty),
-         // User Port-2 data write interface will be active only when the port is enabled in 
+         // User Port-2 data write interface will be active only when the port is enabled in
          // the port configurations Config-1 write direction, Config-2 and Config-3
-         .p2_wr_clk                      (c3_clk0), 
+         .p2_wr_clk                      (c3_clk0),
          .p2_wr_en                       (c3_p2_wr_en),
          .p2_wr_mask                     (c3_p2_wr_mask),
          .p2_wr_data                     (c3_p2_wr_data),
@@ -706,9 +706,9 @@ assign  c3_sys_clk = 1'b0;
          .p2_wr_empty                    (c3_p2_wr_empty),
          .p2_wr_underrun                 (c3_p2_wr_underrun),
          .p2_wr_error                    (c3_p2_wr_error),
-         // User Port-2 data read interface will be active only when the port is enabled in 
+         // User Port-2 data read interface will be active only when the port is enabled in
          // the port configurations Config-1 read direction, Config-2 and Config-3
-         .p2_rd_clk                      (c3_clk0), 
+         .p2_rd_clk                      (c3_clk0),
          .p2_rd_en                       (c3_p2_rd_en),
          .p2_rd_data                     (c3_p2_rd_data),
          .p2_rd_empty                    (c3_p2_rd_empty),
@@ -716,19 +716,19 @@ assign  c3_sys_clk = 1'b0;
          .p2_rd_full                     (c3_p2_rd_full),
          .p2_rd_overflow                 (c3_p2_rd_overflow),
          .p2_rd_error                    (c3_p2_rd_error),
-      
-         // User Port-3 command interface will be active only when the port is enabled in 
+
+         // User Port-3 command interface will be active only when the port is enabled in
          // the port configurations Config-1 and Config-2
-         .p3_cmd_clk                     (c3_clk0), 
-         .p3_cmd_en                      (c3_p3_cmd_en), 
+         .p3_cmd_clk                     (c3_clk0),
+         .p3_cmd_en                      (c3_p3_cmd_en),
          .p3_cmd_instr                   (c3_p3_cmd_instr),
-         .p3_cmd_bl                      (c3_p3_cmd_bl), 
-         .p3_cmd_byte_addr               (c3_p3_cmd_byte_addr), 
+         .p3_cmd_bl                      (c3_p3_cmd_bl),
+         .p3_cmd_byte_addr               (c3_p3_cmd_byte_addr),
          .p3_cmd_full                    (c3_p3_cmd_full),
          .p3_cmd_empty                   (c3_p3_cmd_empty),
-         // User Port-3 data write interface will be active only when the port is enabled in 
+         // User Port-3 data write interface will be active only when the port is enabled in
          // the port configurations Config-1 write direction and Config-2
-         .p3_wr_clk                      (c3_clk0), 
+         .p3_wr_clk                      (c3_clk0),
          .p3_wr_en                       (c3_p3_wr_en),
          .p3_wr_mask                     (c3_p3_wr_mask),
          .p3_wr_data                     (c3_p3_wr_data),
@@ -737,9 +737,9 @@ assign  c3_sys_clk = 1'b0;
          .p3_wr_empty                    (c3_p3_wr_empty),
          .p3_wr_underrun                 (c3_p3_wr_underrun),
          .p3_wr_error                    (c3_p3_wr_error),
-         // User Port-3 data read interface will be active only when the port is enabled in 
+         // User Port-3 data read interface will be active only when the port is enabled in
          // the port configurations Config-1 read direction and Config-2
-         .p3_rd_clk                      (c3_clk0), 
+         .p3_rd_clk                      (c3_clk0),
          .p3_rd_en                       (c3_p3_rd_en),
          .p3_rd_data                     (c3_p3_rd_data),
          .p3_rd_empty                    (c3_p3_rd_empty),
@@ -747,19 +747,19 @@ assign  c3_sys_clk = 1'b0;
          .p3_rd_full                     (c3_p3_rd_full),
          .p3_rd_overflow                 (c3_p3_rd_overflow),
          .p3_rd_error                    (c3_p3_rd_error),
-      
-         // User Port-4 command interface will be active only when the port is enabled in 
+
+         // User Port-4 command interface will be active only when the port is enabled in
          // the port configuration Config-1
-         .p4_cmd_clk                     (c3_clk0), 
-         .p4_cmd_en                      (c3_p4_cmd_en), 
+         .p4_cmd_clk                     (c3_clk0),
+         .p4_cmd_en                      (c3_p4_cmd_en),
          .p4_cmd_instr                   (c3_p4_cmd_instr),
-         .p4_cmd_bl                      (c3_p4_cmd_bl), 
-         .p4_cmd_byte_addr               (c3_p4_cmd_byte_addr), 
+         .p4_cmd_bl                      (c3_p4_cmd_bl),
+         .p4_cmd_byte_addr               (c3_p4_cmd_byte_addr),
          .p4_cmd_full                    (c3_p4_cmd_full),
          .p4_cmd_empty                   (c3_p4_cmd_empty),
-         // User Port-4 data write interface will be active only when the port is enabled in 
+         // User Port-4 data write interface will be active only when the port is enabled in
          // the port configuration Config-1 write direction
-         .p4_wr_clk                      (c3_clk0), 
+         .p4_wr_clk                      (c3_clk0),
          .p4_wr_en                       (c3_p4_wr_en),
          .p4_wr_mask                     (c3_p4_wr_mask),
          .p4_wr_data                     (c3_p4_wr_data),
@@ -768,9 +768,9 @@ assign  c3_sys_clk = 1'b0;
          .p4_wr_empty                    (c3_p4_wr_empty),
          .p4_wr_underrun                 (c3_p4_wr_underrun),
          .p4_wr_error                    (c3_p4_wr_error),
-         // User Port-4 data read interface will be active only when the port is enabled in 
+         // User Port-4 data read interface will be active only when the port is enabled in
          // the port configuration Config-1 read direction
-         .p4_rd_clk                      (c3_clk0), 
+         .p4_rd_clk                      (c3_clk0),
          .p4_rd_en                       (c3_p4_rd_en),
          .p4_rd_data                     (c3_p4_rd_data),
          .p4_rd_empty                    (c3_p4_rd_empty),
@@ -778,19 +778,19 @@ assign  c3_sys_clk = 1'b0;
          .p4_rd_full                     (c3_p4_rd_full),
          .p4_rd_overflow                 (c3_p4_rd_overflow),
          .p4_rd_error                    (c3_p4_rd_error),
-      
-         // User Port-5 command interface will be active only when the port is enabled in 
+
+         // User Port-5 command interface will be active only when the port is enabled in
          // the port configuration Config-1
-         .p5_cmd_clk                     (c3_clk0), 
-         .p5_cmd_en                      (c3_p5_cmd_en), 
+         .p5_cmd_clk                     (c3_clk0),
+         .p5_cmd_en                      (c3_p5_cmd_en),
          .p5_cmd_instr                   (c3_p5_cmd_instr),
-         .p5_cmd_bl                      (c3_p5_cmd_bl), 
-         .p5_cmd_byte_addr               (c3_p5_cmd_byte_addr), 
+         .p5_cmd_bl                      (c3_p5_cmd_bl),
+         .p5_cmd_byte_addr               (c3_p5_cmd_byte_addr),
          .p5_cmd_full                    (c3_p5_cmd_full),
          .p5_cmd_empty                   (c3_p5_cmd_empty),
-         // User Port-5 data write interface will be active only when the port is enabled in 
+         // User Port-5 data write interface will be active only when the port is enabled in
          // the port configuration Config-1 write direction
-         .p5_wr_clk                      (c3_clk0), 
+         .p5_wr_clk                      (c3_clk0),
          .p5_wr_en                       (c3_p5_wr_en),
          .p5_wr_mask                     (c3_p5_wr_mask),
          .p5_wr_data                     (c3_p5_wr_data),
@@ -799,9 +799,9 @@ assign  c3_sys_clk = 1'b0;
          .p5_wr_empty                    (c3_p5_wr_empty),
          .p5_wr_underrun                 (c3_p5_wr_underrun),
          .p5_wr_error                    (c3_p5_wr_error),
-         // User Port-5 data read interface will be active only when the port is enabled in 
+         // User Port-5 data read interface will be active only when the port is enabled in
          // the port configuration Config-1 read direction
-         .p5_rd_clk                      (c3_clk0), 
+         .p5_rd_clk                      (c3_clk0),
          .p5_rd_en                       (c3_p5_rd_en),
          .p5_rd_data                     (c3_p5_rd_data),
          .p5_rd_empty                    (c3_p5_rd_empty),
@@ -810,10 +810,10 @@ assign  c3_sys_clk = 1'b0;
          .p5_rd_overflow                 (c3_p5_rd_overflow),
          .p5_rd_error                    (c3_p5_rd_error),
 
-         .selfrefresh_enter              (1'b0), 
+         .selfrefresh_enter              (1'b0),
          .selfrefresh_mode               (c3_selfrefresh_mode)
       );
-   
+
 // Test bench top for the controller-3
       memc_tb_top #
       (
@@ -825,15 +825,15 @@ assign  c3_sys_clk = 1'b0;
 
          // The following parameters from C_PORT_ENABLE to C_P5_PORT_MODE are introduced
          // to handle the static instances of all the six traffic generators inside the
-   	     // memc_tb_top module. 
+   	     // memc_tb_top module.
          .C_PORT_ENABLE                  (C3_PORT_ENABLE),
          .C_P0_MASK_SIZE                 (C3_P0_MASK_SIZE),
          .C_P0_DATA_PORT_SIZE            (C3_P0_DATA_PORT_SIZE),
          .C_P1_MASK_SIZE                 (C3_P1_MASK_SIZE),
          .C_P1_DATA_PORT_SIZE            (C3_P1_DATA_PORT_SIZE),
-         .C_P0_PORT_MODE                 (C3_P0_PORT_MODE),  
-         .C_P1_PORT_MODE                 (C3_P1_PORT_MODE),  
-         .C_P2_PORT_MODE                 (C3_P2_PORT_MODE),  
+         .C_P0_PORT_MODE                 (C3_P0_PORT_MODE),
+         .C_P1_PORT_MODE                 (C3_P1_PORT_MODE),
+         .C_P2_PORT_MODE                 (C3_P2_PORT_MODE),
          .C_P3_PORT_MODE                 (C3_P3_PORT_MODE),
          .C_P4_PORT_MODE                 (C3_P4_PORT_MODE),
          .C_P5_PORT_MODE                 (C3_P5_PORT_MODE),
@@ -872,7 +872,7 @@ assign  c3_sys_clk = 1'b0;
       memc3_tb_top_inst
       (
          .error			                 (c3_error),
-         .calib_done			         (c3_calib_done), 
+         .calib_done			         (c3_calib_done),
          .clk0			                 (c3_clk0),
          .rst0			                 (c3_rst0),
          .cmp_error			             (c3_cmp_error),
@@ -889,11 +889,11 @@ assign  c3_sys_clk = 1'b0;
          .p5_error_status	             (c3_p5_error_status),
 
   	     // The following port map shows that all the memory controller ports are connected
-         // to the test bench top. However, a traffic generator can be connected to the 
+         // to the test bench top. However, a traffic generator can be connected to the
          // corresponding port only if the port is enabled, whose information can be obtained
          // from the parameters C_PORT_ENABLE.
 
-         // User Port-0 command interface will be active only when the port is enabled in 
+         // User Port-0 command interface will be active only when the port is enabled in
          // the port configurations Config-1, Config-2, Config-3, Config-4 and Config-5
          .p0_mcb_cmd_en                  (c3_p0_cmd_en),
          .p0_mcb_cmd_instr               (c3_p0_cmd_instr),
@@ -914,117 +914,117 @@ assign  c3_sys_clk = 1'b0;
          .p0_mcb_rd_empty                (c3_p0_rd_empty),
          .p0_mcb_rd_fifo_counts          (c3_p0_rd_count),
 
-         // User Port-1 command interface will be active only when the port is enabled in 
+         // User Port-1 command interface will be active only when the port is enabled in
          // the port configurations Config-1, Config-2, Config-3 and Config-4
          .p1_mcb_cmd_en                  (c3_p1_cmd_en),
          .p1_mcb_cmd_instr               (c3_p1_cmd_instr),
          .p1_mcb_cmd_bl                  (c3_p1_cmd_bl),
          .p1_mcb_cmd_addr                (c3_p1_cmd_byte_addr),
          .p1_mcb_cmd_full                (c3_p1_cmd_full),
-         // User Port-1 data write interface will be active only when the port is enabled in 
+         // User Port-1 data write interface will be active only when the port is enabled in
          // the port configurations Config-1, Config-2, Config-3 and Config-4
          .p1_mcb_wr_en                   (c3_p1_wr_en),
          .p1_mcb_wr_mask                 (c3_p1_wr_mask),
          .p1_mcb_wr_data                 (c3_p1_wr_data),
          .p1_mcb_wr_full                 (c3_p1_wr_full),
          .p1_mcb_wr_fifo_counts          (c3_p1_wr_count),
-         // User Port-1 data read interface will be active only when the port is enabled in 
+         // User Port-1 data read interface will be active only when the port is enabled in
          // the port configurations Config-1, Config-2, Config-3 and Config-4
          .p1_mcb_rd_en                   (c3_p1_rd_en),
          .p1_mcb_rd_data                 (c3_p1_rd_data),
          .p1_mcb_rd_empty                (c3_p1_rd_empty),
          .p1_mcb_rd_fifo_counts          (c3_p1_rd_count),
 
-         // User Port-2 command interface will be active only when the port is enabled in 
+         // User Port-2 command interface will be active only when the port is enabled in
          // the port configurations Config-1, Config-2 and Config-3
          .p2_mcb_cmd_en                  (c3_p2_cmd_en),
          .p2_mcb_cmd_instr               (c3_p2_cmd_instr),
          .p2_mcb_cmd_bl                  (c3_p2_cmd_bl),
          .p2_mcb_cmd_addr                (c3_p2_cmd_byte_addr),
          .p2_mcb_cmd_full                (c3_p2_cmd_full),
-         // User Port-2 data write interface will be active only when the port is enabled in 
+         // User Port-2 data write interface will be active only when the port is enabled in
          // the port configurations Config-1 write direction, Config-2 and Config-3
          .p2_mcb_wr_en                   (c3_p2_wr_en),
          .p2_mcb_wr_mask                 (c3_p2_wr_mask),
          .p2_mcb_wr_data                 (c3_p2_wr_data),
          .p2_mcb_wr_full                 (c3_p2_wr_full),
          .p2_mcb_wr_fifo_counts          (c3_p2_wr_count),
-         // User Port-2 data read interface will be active only when the port is enabled in 
+         // User Port-2 data read interface will be active only when the port is enabled in
          // the port configurations Config-1 read direction, Config-2 and Config-3
          .p2_mcb_rd_en                   (c3_p2_rd_en),
          .p2_mcb_rd_data                 (c3_p2_rd_data),
          .p2_mcb_rd_empty                (c3_p2_rd_empty),
          .p2_mcb_rd_fifo_counts          (c3_p2_rd_count),
 
-         // User Port-3 command interface will be active only when the port is enabled in 
+         // User Port-3 command interface will be active only when the port is enabled in
          // the port configurations Config-1 and Config-2
          .p3_mcb_cmd_en                  (c3_p3_cmd_en),
          .p3_mcb_cmd_instr               (c3_p3_cmd_instr),
          .p3_mcb_cmd_bl                  (c3_p3_cmd_bl),
          .p3_mcb_cmd_addr                (c3_p3_cmd_byte_addr),
          .p3_mcb_cmd_full                (c3_p3_cmd_full),
-         // User Port-3 data write interface will be active only when the port is enabled in 
+         // User Port-3 data write interface will be active only when the port is enabled in
          // the port configurations Config-1 write direction and Config-2
          .p3_mcb_wr_en                   (c3_p3_wr_en),
          .p3_mcb_wr_mask                 (c3_p3_wr_mask),
          .p3_mcb_wr_data                 (c3_p3_wr_data),
          .p3_mcb_wr_full                 (c3_p3_wr_full),
          .p3_mcb_wr_fifo_counts          (c3_p3_wr_count),
-         // User Port-3 data read interface will be active only when the port is enabled in 
+         // User Port-3 data read interface will be active only when the port is enabled in
          // the port configurations Config-1 read direction and Config-2
          .p3_mcb_rd_en                   (c3_p3_rd_en),
          .p3_mcb_rd_data                 (c3_p3_rd_data),
          .p3_mcb_rd_empty                (c3_p3_rd_empty),
          .p3_mcb_rd_fifo_counts          (c3_p3_rd_count),
 
-         // User Port-4 command interface will be active only when the port is enabled in 
+         // User Port-4 command interface will be active only when the port is enabled in
          // the port configuration Config-1
          .p4_mcb_cmd_en                  (c3_p4_cmd_en),
          .p4_mcb_cmd_instr               (c3_p4_cmd_instr),
          .p4_mcb_cmd_bl                  (c3_p4_cmd_bl),
          .p4_mcb_cmd_addr                (c3_p4_cmd_byte_addr),
          .p4_mcb_cmd_full                (c3_p4_cmd_full),
-         // User Port-4 data write interface will be active only when the port is enabled in 
+         // User Port-4 data write interface will be active only when the port is enabled in
          // the port configuration Config-1 write direction
          .p4_mcb_wr_en                   (c3_p4_wr_en),
          .p4_mcb_wr_mask                 (c3_p4_wr_mask),
          .p4_mcb_wr_data                 (c3_p4_wr_data),
          .p4_mcb_wr_full                 (c3_p4_wr_full),
          .p4_mcb_wr_fifo_counts          (c3_p4_wr_count),
-         // User Port-4 data read interface will be active only when the port is enabled in 
+         // User Port-4 data read interface will be active only when the port is enabled in
          // the port configuration Config-1 read direction
          .p4_mcb_rd_en                   (c3_p4_rd_en),
          .p4_mcb_rd_data                 (c3_p4_rd_data),
          .p4_mcb_rd_empty                (c3_p4_rd_empty),
          .p4_mcb_rd_fifo_counts          (c3_p4_rd_count),
 
-         // User Port-5 command interface will be active only when the port is enabled in 
+         // User Port-5 command interface will be active only when the port is enabled in
          // the port configuration Config-1
          .p5_mcb_cmd_en                  (c3_p5_cmd_en),
          .p5_mcb_cmd_instr               (c3_p5_cmd_instr),
          .p5_mcb_cmd_bl                  (c3_p5_cmd_bl),
          .p5_mcb_cmd_addr                (c3_p5_cmd_byte_addr),
          .p5_mcb_cmd_full                (c3_p5_cmd_full),
-         // User Port-5 data write interface will be active only when the port is enabled in 
+         // User Port-5 data write interface will be active only when the port is enabled in
          // the port configuration Config-1 write direction
          .p5_mcb_wr_en                   (c3_p5_wr_en),
          .p5_mcb_wr_mask                 (c3_p5_wr_mask),
          .p5_mcb_wr_data                 (c3_p5_wr_data),
          .p5_mcb_wr_full                 (c3_p5_wr_full),
          .p5_mcb_wr_fifo_counts          (c3_p5_wr_count),
-         // User Port-5 data read interface will be active only when the port is enabled in 
+         // User Port-5 data read interface will be active only when the port is enabled in
          // the port configuration Config-1 read direction
          .p5_mcb_rd_en                   (c3_p5_rd_en),
          .p5_mcb_rd_data                 (c3_p5_rd_data),
          .p5_mcb_rd_empty                (c3_p5_rd_empty),
          .p5_mcb_rd_fifo_counts          (c3_p5_rd_count)
         );
-   
 
 
 
 
 
-endmodule   
 
- 
+endmodule
+
+

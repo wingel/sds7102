@@ -45,7 +45,7 @@ class DdrBus(object):
         self.DQ1_O = Signal(intbv(~0)[d_width * 8:])
         self.DQ1_OE = Signal(False)
 
-def ddr_connect(bus, clk, clk_b, rst,
+def ddr_connect(bus, clk, rst,
                 cs_b, ras_b, cas_b, we_b, ba, a,
                 dqs, dm, dq, prefix = ''):
     from spartan6 import iobuf_delay_ddr2_fixed

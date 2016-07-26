@@ -7,7 +7,8 @@ def mig(sys_rst_i, sys_clk_p, sys_clk_n,
         mcb3_dram_ras_n, mcb3_dram_cas_n, mcb3_dram_we_n,
         mcb3_dram_ba, mcb3_dram_a, mcb3_dram_odt,
         mcb3_dram_dqs, mcb3_dram_dqs_n, mcb3_dram_udqs, mcb3_dram_udqs_n, mcb3_dram_dm, mcb3_dram_udm,
-        mcb3_dram_dq):
+        mcb3_dram_dq,
+        soc_clk):
 
     sys_rst_i.read = True
     sys_clk_p.read = True
@@ -45,6 +46,8 @@ def mig(sys_rst_i, sys_clk_p, sys_clk_n,
 
     mcb3_dram_dq.read = True
     mcb3_dram_dq.driven = True
+
+    soc_clk.driven = True
 
     @always_comb
     def comb():
@@ -84,6 +87,7 @@ example_top #(
          .mcb3_dram_dm                   ($mcb3_dram_dm),
          .mcb3_dram_odt                  ($mcb3_dram_odt),
          .mcb3_dram_cke                  (),
-         .mcb3_rzq			 ()
+         .mcb3_rzq			 (),
+         .soc_clk                        ($soc_clk)
 );
 '''

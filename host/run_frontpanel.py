@@ -113,8 +113,6 @@ def main():
             last_ts = 0
             last = 0
             for v in samples:
-                print "0x%08x" % v,
-
                 ts = (v >> 16) & 0xffff
                 active = (v >> 9) & 1
                 pressed = (v >> 8) & 1
@@ -125,10 +123,8 @@ def main():
 
                 vcd.write_timestamp(t)
                 if active:
-                    print names[key],
+                    print "0x%08x" % v, names[key]
                     vcd.write_bit(names[key], pressed)
-
-                print
 
             vcd.write_timestamp(t)
 

@@ -29,5 +29,6 @@ else
 obj-m += fpga.o
 obj-m += gpios.o
 obj-m += regs.o
+obj-m += test-soc.o
 
 endif

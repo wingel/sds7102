@@ -21,9 +21,12 @@ class SDS(object):
         self.fi = self.p.stdout
         self.fo = self.p.stdin
 
+        self.verbose = False
+
     def read_regs(self, addr, count):
         cmd = 'read_fpga 0x%x %u' % (addr, count)
-        print cmd
+        if self.verbose:
+            print cmd
         self.fo.write(cmd + '\n')
         self.fo.flush()
 
@@ -39,16 +42,45 @@ class SDS(object):
 
     def write_regs(self, addr, data):
         cmd = 'write_fpga 0x%x %s' % (addr, ' '.join([ '0x%x' % v for v in data ]))
-        print cmd
+        if self.verbose:
+            print cmd
         self.fo.write(cmd + '\n')
         self.fo.flush()
 
     def write_reg(self, addr, value):
         self.write_regs(addr, [ value ])
 
+    def read_soc_regs(self, addr, count):
+        cmd = 'read_soc 0x%x %u' % (addr, count)
+        if self.verbose:
+            print cmd
+        self.fo.write(cmd + '\n')
+        self.fo.flush()
+
+        a = numpy.zeros(count, dtype = numpy.uint32)
+        for i in range(count):
+            s = self.fi.readline()
+            a[i] = int(s, 0)
+
+        return a
+
+    def read_soc_reg(self, addr):
+        return self.read_regs(addr, 1)[0]
+
+    def write_soc_regs(self, addr, data):
+        cmd = 'write_soc 0x%x %s' % (addr, ' '.join([ '0x%x' % v for v in data ]))
+        if self.verbose:
+            print cmd
+        self.fo.write(cmd + '\n')
+        self.fo.flush()
+
+    def write_soc_reg(self, addr, value):
+        self.write_regs(addr, [ value ])
+
     def set_gpio(self, pin, value):
         cmd = 'set_gpio %u %u' % (pin, value)
-        print cmd
+        if self.verbose:
+            print cmd
         self.fo.write(cmd + '\n')
         self.fo.flush()
 
@@ -119,7 +151,8 @@ class SDS(object):
             v2 <<= 1
             if v & (1<<i):
                 v2 |= 1
-        print "bu2506 0x%04x 0x%04x" % (v, v2)
+        if self.verbose:
+            print "bu2506 0x%04x 0x%04x" % (v, v2)
         self.shifter(0, 14, v2, pulse = 1)
 
     def adf4360(self, value):
@@ -229,13 +262,23 @@ def main():
 
     # sds.capture(16)
 
-    print "0x250 -> 0x%08x" % sds.read_reg(0x250)
-
-    sds.write_reg(0x250, 0)
-
-    for i in range(10):
+    if 0:
         print "0x250 -> 0x%08x" % sds.read_reg(0x250)
-        time.sleep(0.1)
+        sds.write_reg(0x250, 0)
+        for i in range(10):
+            print "0x250 -> 0x%08x" % sds.read_reg(0x250)
+            time.sleep(0.1)
+
+    o = 0x10
+    data = sds.read_soc_regs(0x10000 + o, 1<<16)
+    for i, v in enumerate(data):
+        t = (i + o) & 0xffff
+        expected = ((t ^ (t >> 1)) << 16) | t
+        if 1 or v != expected:
+            print "%08x %08x (%08x)" % (t, v, expected),
+            if v != expected:
+                print "<== ERROR",
+            print
 
 if __name__ == '__main__':
     main()

@@ -18,7 +18,10 @@ from wb import WbMux
 from hybrid_counter import HybridCounter
 from util import tristate
 from regfile import RegFile, Field, RoField, RwField, Port
-from ddr import Ddr, DdrBus, DdrSource, ddr_connect
+from ddr import Ddr, DdrBus, ddr_connect
+from simplemux import SimpleMux
+from simplealgo import SimpleAlgo
+from simpleram import SimpleRam
 from sampler import Sampler
 from shifter import Shifter, ShifterBus
 from ram import Ram
@@ -76,6 +79,8 @@ def top(din, init_b, cclk,
     # PLL.  It also generates soc_clk.
     soc_clk = Signal(False)
     soc_clk._name = 'soc_clk' # Must match name of timing spec in ucf file
+    soc_clk_b = Signal(False)
+    soc_clk_b._name = 'soc_clk_b' # Must match name of timing spec in ucf file
 
     dram_rst_i = Signal(False)
     dram_clk_p = soc_clk_p
@@ -100,7 +105,7 @@ def top(din, init_b, cclk,
         mcb3_dram_ba, mcb3_dram_a, mcb3_dram_odt,
         mcb3_dram_dqs, mcb3_dram_dqs_n, mcb3_dram_udqs, mcb3_dram_udqs_n,
         mcb3_dram_dm, mcb3_dram_udm, mcb3_dram_dq,
-        soc_clk)
+        soc_clk, soc_clk_b)
     insts.append(mig_inst)
 
     ####################################################################
@@ -111,17 +116,33 @@ def top(din, init_b, cclk,
     soc_bus = DdrBus(2, 12, 2)
 
     soc_connect_inst = ddr_connect(
-        soc_bus, soc_clk, None,
+        soc_bus, soc_clk, soc_clk_b, None,
         soc_cs, soc_ras, soc_cas, soc_we, soc_ba, soc_a,
         soc_dqs, soc_dm, soc_dq)
     insts.append(soc_connect_inst)
 
     if 1:
-        soc_source0 = DdrSource(soc_system, 16, 16)
-        soc_source1 = DdrSource(soc_system, 16, 16)
+        sm = SimpleMux(system)
 
-        soc_ddr = Ddr(soc_source0, soc_source1)
-        soc_inst = soc_ddr.gen(soc_system, soc_bus)
+        if 1:
+            sr = SimpleRam(soc_system, 4096, 32)
+            sr_inst = sr.gen(*sr.args())
+            insts.append(sr_inst)
+            sm.add(sr.port(), 0x8000)
+
+        if 1:
+            sa = SimpleAlgo(soc_system, (1<<16), 32)
+            sa_inst = sa.gen(*sa.args())
+            insts.append(sa_inst)
+            sm.add(sa.port(), 0x10000)
+
+        sm.addr_depth = 32 * 1024 * 1024
+        sm_inst = sm.gen(*sm.args())
+        insts.append(sm_inst)
+        soc_port = sm.port()
+
+        soc_ddr = Ddr()
+        soc_inst = soc_ddr.gen(soc_system, soc_bus, soc_port)
         insts.append(soc_inst)
 
     if 1:

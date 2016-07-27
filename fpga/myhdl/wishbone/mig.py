@@ -8,46 +8,48 @@ def mig(sys_rst_i, sys_clk_p, sys_clk_n,
         mcb3_dram_ba, mcb3_dram_a, mcb3_dram_odt,
         mcb3_dram_dqs, mcb3_dram_dqs_n, mcb3_dram_udqs, mcb3_dram_udqs_n, mcb3_dram_dm, mcb3_dram_udm,
         mcb3_dram_dq,
-        soc_clk):
+        soc_clk, soc_clk_b = ''):
 
     sys_rst_i.read = True
     sys_clk_p.read = True
     sys_clk_n.read = True
 
-    calib_done.driven = True
-    error.driven = True
+    calib_done.driven = 'wire'
+    error.driven = 'wire'
 
-    mcb3_dram_ck.driven = True
-    mcb3_dram_ck_n.driven = True
+    mcb3_dram_ck.driven = 'wire'
+    mcb3_dram_ck_n.driven = 'wire'
 
-    mcb3_dram_ras_n.driven = True
-    mcb3_dram_cas_n.driven = True
-    mcb3_dram_we_n.driven = True
+    mcb3_dram_ras_n.driven = 'wire'
+    mcb3_dram_cas_n.driven = 'wire'
+    mcb3_dram_we_n.driven = 'wire'
 
-    mcb3_dram_ba.driven = True
-    mcb3_dram_a.driven = True
-    mcb3_dram_odt.driven = True
+    mcb3_dram_ba.driven = 'wire'
+    mcb3_dram_a.driven = 'wire'
+    mcb3_dram_odt.driven = 'wire'
 
     mcb3_dram_dqs.read = True
-    mcb3_dram_dqs.driven = True
+    mcb3_dram_dqs.driven = 'wire'
     mcb3_dram_dqs_n.read = True
-    mcb3_dram_dqs_n.driven = True
+    mcb3_dram_dqs_n.driven = 'wire'
 
     mcb3_dram_udqs.read = True
-    mcb3_dram_udqs.driven = True
+    mcb3_dram_udqs.driven = 'wire'
     mcb3_dram_udqs_n.read = True
-    mcb3_dram_udqs_n.driven = True
+    mcb3_dram_udqs_n.driven = 'wire'
 
     mcb3_dram_dm.read = True
-    mcb3_dram_dm.driven = True
+    mcb3_dram_dm.driven = 'wire'
 
     mcb3_dram_udm.read = True
-    mcb3_dram_udm.driven = True
+    mcb3_dram_udm.driven = 'wire'
 
     mcb3_dram_dq.read = True
-    mcb3_dram_dq.driven = True
+    mcb3_dram_dq.driven = 'wire'
 
-    soc_clk.driven = True
+    soc_clk.driven = 'wire'
+    if isinstance(soc_clk_b, SignalType):
+        soc_clk_b.driven = 'wire'
 
     @always_comb
     def comb():
@@ -88,6 +90,7 @@ example_top #(
          .mcb3_dram_odt                  ($mcb3_dram_odt),
          .mcb3_dram_cke                  (),
          .mcb3_rzq			 (),
-         .soc_clk                        ($soc_clk)
+         .soc_clk                        ($soc_clk),
+         .soc_clk_b                      ($soc_clk_b)
 );
 '''

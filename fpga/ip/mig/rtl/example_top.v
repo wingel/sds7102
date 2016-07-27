@@ -127,7 +127,8 @@ module example_top #
    inout                                            mcb3_dram_dqs_n,
    output                                           mcb3_dram_ck,
    output                                           mcb3_dram_ck_n,
-   output                                           soc_clk
+   output                                           soc_clk,
+   output                                           soc_clk_b
 );
 // The parameter CX_PORT_ENABLE shows all the active user ports in the design.
 // For example, the value 6'b111100 tells that only port-2, port-3, port-4
@@ -487,6 +488,7 @@ assign  c3_sys_clk = 1'b0;
          .sys_rst_i                      (c3_sys_rst_i),
          .clk0                           (c3_clk0),       // [output] user clock which determines the operating frequency of user interface ports
          .soc_clk                        (soc_clk),
+         .soc_clk_b                      (soc_clk_b),
          .rst0                           (c3_rst0),
          .async_rst                      (c3_async_rst),
          .sysclk_2x                      (c3_sysclk_2x),

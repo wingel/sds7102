@@ -63,18 +63,21 @@ class SDS7102(FPGA):
         #
         #     http://www.xilinx.com/support/answers/34313.html
         #
-        # Use LVCMOS18 with the highest drive strength instead.
+        # SSTL18_I is supported though.  The differences between
+        # SSTL18_I and SSTL18_II as far as I can tell from Xilinx
+        # DS162 "Spartan-6 FPGA Data Sheet: DC and Switching
+        # Characteristics" is that SSTL18_I has tighter acceptable
+        # input range VTT +/- 0.47V instead of VTT +/- 0.60V and that
+        # SSTL1_I has a weaker drive strength of 6.7mA instead of
+        # 13.4mA for SSTL18_II.  And using SSTL18_I seems to work.
 
-        'soc_dqs':      dict(pins = ('T9', 'M6'), iostandard = 'LVCMOS18',
-                             drive = '16'),
-        'soc_dm':       dict(pins = ('P11', 'T10'), iostandard = 'LVCMOS18',
-                             drive = '16'),
+        'soc_dqs':      dict(pins = ('T9', 'M6'), iostandard = 'SSTL18_I'),
+        'soc_dm':       dict(pins = ('P11', 'T10'), iostandard = 'SSTL18_I'),
         'soc_dq':       dict(pins = ('T7',  'L7',  'P9',  'N5',
                                      'M11', 'T3',  'M9',  'T4',
                                      'T6',  'M12', 'P4',  'N6',
                                      'N8',  'P5',  'P8',  'R5'),
-                             iostandard = 'LVCMOS18',
-                             drive = '16'),
+                             iostandard = 'SSTL18_I'),
 
         'adc_clk_p':	dict(pins = ('E7',), iostandard = 'LVDS_25'),
         'adc_clk_n':	dict(pins = ('E8',), iostandard = 'LVDS_25'),
@@ -206,6 +209,15 @@ CONFIG MCB_PERFORMANCE= STANDARD;
 # NET "c?_pll_lock" TIG;
 # INST "memc?_wrapper_inst/mcb_ui_top_inst/mcb_raw_wrapper_inst/gen_term_calib.mcb_soft_calibration_top_inst/mcb_soft_calibration_inst/DONE_SOFTANDHARD_CAL*" TIG;
 # NET "memc?_wrapper_inst/mcb_ui_top_inst/mcb_raw_wrapper_inst/gen_term_calib.mcb_soft_calibration_top_inst/mcb_soft_calibration_inst/CKE_Train" TIG; ##This path exists for DDR2 only
+
+# NET "memc3_infrastructure_inst/sys_clk_ibufg" TNM_NET = "SYS_CLK3";
+# TIMESPEC "TS_SYS_CLK3" = PERIOD "SYS_CLK3"  3.0  ns HIGH 50 %;
+
+NET "soc_clk_p" TNM_NET = "SOC_CLK";
+TIMESPEC "TS_SOC_CLK" = PERIOD "SOC_CLK"  7.5  ns HIGH 50 %;
+
+# NET "soc_clk" TNM_NET = "SOC_CLK_INT";
+# TIMESPEC "TS_SOC_CLK_INT" = PERIOD "SOC_CLK_INT"  6  ns HIGH 50 %;
 '''
 
     for k, v in sorted(default_ports.items()):

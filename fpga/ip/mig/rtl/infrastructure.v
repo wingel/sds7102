@@ -91,6 +91,7 @@ module infrastructure #
    output sysclk_2x_180,
    output mcb_drp_clk,
    output soc_clk,
+   output soc_clk_b,
    output pll_ce_0,
    output pll_ce_90,
    output pll_lock
@@ -175,14 +176,14 @@ module infrastructure #
          .CLKOUT1_DIVIDE     (C_CLKOUT1_DIVIDE),
          .CLKOUT2_DIVIDE     (C_CLKOUT2_DIVIDE),
          .CLKOUT3_DIVIDE     (C_CLKOUT3_DIVIDE),
-         .CLKOUT4_DIVIDE     (1),
+         .CLKOUT4_DIVIDE     (5),
          .CLKOUT5_DIVIDE     (5),
          .CLKOUT0_PHASE      (0.000),
          .CLKOUT1_PHASE      (180.000),
          .CLKOUT2_PHASE      (0.000),
          .CLKOUT3_PHASE      (0.000),
          .CLKOUT4_PHASE      (0.000),
-         .CLKOUT5_PHASE      (0.000),
+         .CLKOUT5_PHASE      (180.000),
          .CLKOUT0_DUTY_CYCLE (0.500),
          .CLKOUT1_DUTY_CYCLE (0.500),
          .CLKOUT2_DUTY_CYCLE (0.500),
@@ -221,8 +222,8 @@ module infrastructure #
            .CLKOUT1     (clk_2x_180),
            .CLKOUT2     (clk0_bufg_in),
            .CLKOUT3     (mcb_drp_clk_bufg_in),
-           .CLKOUT4     (),
-           .CLKOUT5     (soc_clk_bufg_in),
+           .CLKOUT4     (soc_clk_bufg_in),
+           .CLKOUT5     (soc_clk_b_bufg_in),
            .DO          (),
            .DRDY        (),
            .LOCKED      (locked)
@@ -247,6 +248,13 @@ module infrastructure #
     (
      .O (soc_clk),
      .I (soc_clk_bufg_in),
+     .CE (locked)
+     );
+
+   BUFGCE U_BUFG_SOC_CLK_B
+    (
+     .O (soc_clk_b),
+     .I (soc_clk_b_bufg_in),
      .CE (locked)
      );
 

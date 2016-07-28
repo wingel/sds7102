@@ -15,6 +15,12 @@ class Port(object):
 	self.DAT_I = Signal(value)
 	self.DAT_O = Signal(value)
 
+        # self.DAT_I.read = 1
+        # self.DAT_I.driven = 1
+
+        # self.DAT_O.driven = 1
+        # self.DAT_O.read = 1
+
 class Field(object):
     def __init__(self, system, name, description, port):
         self.system = system
@@ -22,15 +28,23 @@ class Field(object):
         self.description = description
         self.port = port
 
-    def gen(self, bus):
+        print name, "I", len(port.DAT_I), "O", len(port.DAT_O)
+
+    def gen3(self, bus):
         @always_comb
         def comb():
             self.port.STB.next = bus.STB_I
             self.port.WE.next = bus.WE_I
             self.port.DAT_I.next = bus.DAT_I[self.offset+self.width:self.offset]
+
+        @always_comb
+        def comb2():
             bus.DAT_O.next[self.offset+self.width:self.offset] = self.port.DAT_O
 
-        return comb
+        return comb, comb2
+
+    def gen(self, other):
+        return self.gen3(other)
 
 class RoField(Field):
     def __init__(self, system, name, description, signal):
@@ -38,14 +52,10 @@ class RoField(Field):
                                       Port(signal.val))
         self.signal = signal
 
-    def gen(self, other):
-        print "RoField.gen"
+    def gen2(self, other):
+        print "RoField.gen", self.name
 
-        field_inst = super(RoField, self).gen(other)
-
-        # lost signals
-        self.port.DAT_O._name = 'dat_o_%u' % id(self)
-        self.port.DAT_O.driven = 1
+        field_inst = super(RoField, self).gen3(other)
 
         @always_comb
         def comb():
@@ -53,14 +63,17 @@ class RoField(Field):
 
         return field_inst, comb
 
+    def gen(self, other):
+        return self.gen2(other)
+
 class RwField(RoField):
     def __init__(self, system, name, description, signal):
         super(RwField, self).__init__(system, name, description, signal)
 
     def gen(self, other):
-        print "RwField.gen"
+        print "RwField.gen", self.name
 
-        rofield_inst = super(RwField, self).gen(other)
+        rofield_inst = super(RwField, self).gen2(other)
 
         @always_seq(self.system.CLK.posedge, self.system.RST)
         def seq():

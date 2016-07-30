@@ -3,7 +3,7 @@ LINUX_REPO="https://github.com/wingel/linux.git"
 LINUX_BRANCH="sds7102-v4"
 
 BUILDROOT_REPO="https://github.com/wingel/buildroot.git"
-BUILDROOT_BRANCH="2016.05"
+BUILDROOT_BRANCH="sds7102"
 
 MYHDL_REPO="https://github.com/wingel/myhdl.git"
 MYHDL_BRANCH="sds7102"

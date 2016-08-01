@@ -5,6 +5,7 @@ import sys
 paths = [
     '../../../myhdl',
     '../../../rhea',
+    '../common',
     ]
 for path in paths:
     if path not in sys.path:

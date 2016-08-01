@@ -13,28 +13,24 @@ from vcd import VCDOutput
 def main():
     sds = SDS(sys.argv[1])
 
-    if 0:
-        sds.set_green_led(0)
+    if 1:
         sds.set_red_led(0)
-        sds.set_white_led(0)
-
-        sds.set_green_led(1)
-        time.sleep(0.3)
         sds.set_green_led(0)
+        sds.set_white_led(0)
 
         sds.set_red_led(1)
         time.sleep(0.3)
         sds.set_red_led(0)
+
+        sds.set_green_led(1)
+        time.sleep(0.3)
+        sds.set_green_led(0)
 
         sds.set_white_led(1)
         time.sleep(0.3)
         sds.set_white_led(0)
 
     if 1:
-        samples = sds.read_regs(0x400, 1024)
-
-        sds.fp_init()
-
         names = [ 'd[%u]' % i for i in range(64) ]
 
         if 1:
@@ -107,12 +103,19 @@ def main():
 
             names[63] = 'MenuOff'
 
+        if 1:
+            sds.fp_init()
+            time.sleep(0.1)
+
         with open('frontpanel.vcd', 'w') as f:
             vcd = VCDOutput(f, names)
             t = 0
             last_ts = 0
             last = 0
-            for v in samples:
+
+            while 1:
+                v = sds.read_soc_reg(0x110)
+
                 ts = (v >> 16) & 0xffff
                 active = (v >> 9) & 1
                 pressed = (v >> 8) & 1
@@ -122,11 +125,19 @@ def main():
                 last_ts = ts
 
                 vcd.write_timestamp(t)
+
                 if active:
                     print "0x%08x" % v, names[key]
                     vcd.write_bit(names[key], pressed)
 
-            vcd.write_timestamp(t)
+                else:
+                    if not sys.argv[0]:
+                        break
+
+                    time.sleep(0.1)
+
+        if 1:
+            sds.fp_init()
 
 if __name__ == '__main__':
     if not sys.argv[0]:

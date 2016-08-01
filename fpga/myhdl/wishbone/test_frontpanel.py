@@ -7,17 +7,19 @@ import sys
 from myhdl import (Signal, ResetSignal, intbv,
                    always, always_comb, instance, delay)
 
-from timebase import timescale, nsec, usec, msec, sec
-from system import System
-from clk import Clk
-from rst import rstgen
-from wb import WbBus, WbMux
-from util import rename_interface, mask
-from test_wb import wb_write, wb_read
+from myhdl import toVerilog, Simulation, traceSignals, instance, delay
+
+from timebase import nsec
+from util import rename_interface
+from test_system import create_system
+from simplebus import SimpleMux, sb_write, sb_read
+
+import sys
+
 from frontpanel import FrontPanel
 
-def fake_panel(rst, clk, dout, nr_keys):
-    print "fake_panel", type(rst), type(clk), type(dout), type(nr_keys)
+def fake_panel(fp_rst, fp_clk, fp_dout, nr_keys):
+    print "fake_panel", type(fp_rst), type(fp_clk), type(fp_dout), type(nr_keys)
 
     insts = []
 
@@ -44,9 +46,9 @@ def fake_panel(rst, clk, dout, nr_keys):
 
     insts.append(src)
 
-    @always (clk.negedge)
+    @always (fp_clk.negedge)
     def seq():
-        if rst:
+        if fp_rst:
             n.next = 0
 
         elif n == nr_keys - 1:
@@ -58,110 +60,98 @@ def fake_panel(rst, clk, dout, nr_keys):
 
     @always_comb
     def comb():
-        if rst:
-            dout.next = not keys[0]
+        if fp_rst:
+            fp_dout.next = not keys[0]
         else:
-            dout.next = not keys[n]
+            fp_dout.next = not keys[n]
     insts.append(comb)
 
     return insts
 
-def gen(system, wb_bus, fp_rst, fp_clk, fp_din, fp_init, nr_keys, prescaler):
-    # Make signals visible in simulation
-    RST_I = wb_bus.RST_I
-    CLK_I = wb_bus.CLK_I
-    CYC_I = wb_bus.CYC_I
-    STB_I = wb_bus.STB_I
-    WE_I  = wb_bus.WE_I
-    ACK_O = wb_bus.ACK_O
-    ADR_I = wb_bus.ADR_I
-    DAT_I = wb_bus.DAT_I
-    DAT_O = wb_bus.DAT_O
+class Harness(object):
+    def __init__(self, fifo_depth = 5, data_width = 32, nr_keys = 7, ts_width = 8, prescaler = 2):
+        self.duration = 3000 * nsec
 
-    insts = []
+        self.stimuli = []
 
-    frontpanel = FrontPanel(system, fp_rst, fp_clk, fp_din, fp_init, 5, 32, nr_keys, prescaler, ts_width = 8)
-    insts.append(frontpanel.gen(wb_bus))
+        self.system, system_inst = create_system()
+        self.stimuli.append(system_inst)
 
-    return insts
+        fp_rst = Signal(False)
+        fp_clk = Signal(False)
+        fp_din = Signal(False)
+        fp_din = Signal(False)
 
-def setup(nr_keys, prescaler):
-    insts = []
+        fp_green = Signal(False)
+        fp_white = Signal(False)
 
-    clk = Clk(50E6)
-    insts.append(clk.gen())
+        self.mux = SimpleMux(self.system)
 
-    if 1:
-        rst = ResetSignal(0, active = 1, async = 0)
-        insts.append(rstgen(rst, 100 * nsec, clk))
-    else:
-        rst = None
+        self.fp = FrontPanel(self.system,
+                             fp_rst, fp_clk, fp_din, fp_green, fp_white,
+                             fifo_depth = fifo_depth, data_width = 32,
+                             nr_keys = nr_keys, ts_width = 8,
+                             prescaler = prescaler)
+        self.mux.add(self.fp.ctl_bus)
+        self.mux.add(self.fp.data_bus)
 
-    system = System(clk, rst)
+        self.bus = self.mux.bus()
 
-    wb_bus = WbBus(system, addr_depth = 10, data_width = 32)
-    rename_interface(wb_bus, None)
+        self.stimuli.append(fake_panel(fp_rst, fp_clk, fp_din, nr_keys = nr_keys))
 
-    fp_rst = Signal(False)
-    fp_clk = Signal(False)
-    fp_din = Signal(False)
-    fp_init = Signal(False)
+        @instance
+        def master():
+            yield delay(299 * nsec)
+            for i in range(100):
+                yield delay(99 * nsec)
+                yield(sb_read(self.system, self.bus, 1))
+        self.stimuli.append(master)
 
-    return insts, gen, [ system, wb_bus, fp_rst, fp_clk, fp_din, fp_init, nr_keys, prescaler ]
+        #  Any parameters you want to have at the top level
+        self.args = ( self.system, self.bus,
+                      fp_rst, fp_clk, fp_din, fp_green, fp_white )
 
-def sim():
-    from myhdl import Simulation, traceSignals, instance, delay
+    def gen(self, system, bus, fp_rst, fp_clk, fp_din, fp_green, fp_white):
+        # rename_interface(system, None)
+        # rename_interface(bus, None)
 
-    insts, gen, args = setup(nr_keys = 5, prescaler = 2)
+        # Expose signals to gtkwave
+        CLK = system.CLK
+        RST = system.RST
+        ADDR = bus.ADDR
+        WR = bus.WR
+        WR_DATA = bus.WR_DATA
+        RD = bus.RD
+        RD_DATA = bus.RD_DATA
 
-    wb_bus = args[1]
+        insts = []
+        insts.append(self.fp.gen())
+        insts.append(self.mux.gen())
 
-    insts.append(traceSignals(gen, *args))
+        return insts
 
-    if 1:
-        fake_panel_inst = fake_panel(args[2], args[3], args[4], args[6])
-        insts.append(fake_panel_inst)
+    def emit(self):
+        toVerilog(self.gen, *self.args)
+        print open('gen.v', 'r').read()
+        sys.stdout.flush()
 
-    cs = (1<<1)
-    cpol = 0
-    cpha = 0
-    pulse = 1
+    def sim(self):
+        insts = []
 
-    @instance
-    def test():
-        yield delay(2999 * nsec)
-        yield(wb_read(wb_bus, 0))
+        insts.append(traceSignals(self.gen, *self.args))
+        insts += self.stimuli
 
-        while 1:
-            yield(delay(999 * nsec))
-            yield(wb_read(wb_bus, 1))
-
-    insts.append(test)
-
-    sim = Simulation(insts)
-    sim.run(15000 * nsec)
-    print
-    sys.stdout.flush()
-
-def emit():
-    from myhdl import toVerilog
-
-    insts, gen, args = setup(nr_keys = 64, prescaler = int(50E6 / 300E3 / 3))
-
-    toVerilog(gen, *args)
-
-    print
-    print open('gen.v', 'r').read()
-    print
-    sys.stdout.flush()
+        sim = Simulation(insts)
+        sim.run(self.duration)
+        print
+        sys.stdout.flush()
 
 def main():
     if 1:
-        emit()
-        sys.stdout.flush()
+        Harness(fifo_depth = 5, nr_keys = 13, ts_width = 8, data_width = 24, prescaler = 2).emit()
 
     if 1:
-        sim()
+        Harness(fifo_depth = 5, nr_keys = 13, ts_width = 8, data_width = 24, prescaler = 2).sim()
 
 if __name__ == '__main__':
     main()

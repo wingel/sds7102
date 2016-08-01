@@ -6,32 +6,30 @@ if __name__ == '__main__':
 
 from myhdl import Signal, intbv, always, always_seq, always_comb
 
-from wb import WbSlave
-from system import System
 from util import Packer
+from simplebus import SimpleBus, SimpleReg, Port, Field, DummyField, RwField
 
 class Entry(object):
-    def __init__(self, nr_keys = 64, ts_width = 10):
+    def __init__(self, nr_keys, ts_width):
         self.key = Signal(intbv(0, 0, nr_keys))
         self.pressed = Signal(False)
         self.ts = Signal(intbv(0)[ts_width:])
 
-class FrontPanel(WbSlave):
-    def __init__(self, system, rst, clk, din, init, addr_depth, data_width,
-                 nr_keys = 64, prescaler = 64, ts_width = 10):
-        print "FrontPanel", rst, clk, din
-        print addr_depth, data_width, nr_keys, prescaler, ts_width
-
-        super(FrontPanel, self).__init__(addr_depth, data_width)
-
+class FrontPanel(object):
+    def __init__(self, system, fp_rst, fp_clk, fp_din, fp_green, fp_white,
+                 fifo_depth = 256, data_width = 32,
+                 nr_keys = 64, ts_width = 10, prescaler = 400):
         self.system = system
 
-        self.fp_rst = rst
-        self.fp_clk = clk
-        self.fp_din = din
-        self.fp_init = init
+        self.fp_rst = fp_rst
+        self.fp_clk = fp_clk
+        self.fp_din = fp_din
+
+        self.fp_green = fp_green
+        self.fp_white = fp_white
 
         self.nr_keys = nr_keys
+
         self.prescaler = prescaler
 
         self.ts = Signal(intbv(0)[ts_width:])
@@ -39,9 +37,40 @@ class FrontPanel(WbSlave):
         self.packer = Packer(Entry, nr_keys = nr_keys, ts_width = ts_width)
 
         self.fifo = [ Signal(intbv(0)[len(self.packer):])
-                      for _ in range(self.addr_depth) ]
+                      for _ in range(fifo_depth) ]
         self.fifo_head = Signal(intbv(0, 0, len(self.fifo)))
         self.fifo_tail = Signal(intbv(0, 0, len(self.fifo)))
+
+        self.fp_init = Signal(False)
+
+        self.key_code = Port(((nr_keys-1).bit_length() + 7) & ~7)
+        self.key_pressed = Port(1)
+        self.key_valid = Port(1)
+        self.key_ts = Port(ts_width)
+
+        self._bus = None
+
+        self.fp_green_tmp = Signal(False)
+        self.fp_white_tmp = Signal(False)
+
+        self.ctl_reg = SimpleReg(system, 'fp_ctl', "Frontpanel Control", [
+            RwField('red', "Red LED", self.fp_green_tmp),
+            RwField('white', "White LED", self.fp_white_tmp),
+            DummyField(6),
+            RwField('init', "Initialize frontpanel when true", self.fp_init),
+            ])
+
+        self.data_reg = SimpleReg(system, 'fp_data', "Frontpanel Data", [
+            Field('key', "Keycode", self.key_code),
+            Field('pressed', "Key pressed", self.key_pressed),
+            Field('valid', "Key valid", self.key_valid),
+            DummyField(6),
+            Field('ts', "Key Timestamp", self.key_ts),
+            ])
+
+        self.ctl_bus = self.ctl_reg.bus()
+
+        self.data_bus = self.data_reg.bus()
 
     def gen_scanner(self):
         insts = []
@@ -81,7 +110,7 @@ class FrontPanel(WbSlave):
                 idx.next = 0
                 cnt.next = self.prescaler - 1
                 clk.next = 1
-                self.ts.next = 0
+                self.ts.next = 1
                 self.fifo_head.next = self.fifo_tail
 
             else:
@@ -121,10 +150,10 @@ class FrontPanel(WbSlave):
 
         return insts
 
-    def gen(self, bus):
-        insts = []
+    def gen(self):
+        system = self.system
 
-        system = System(bus.CLK_I, bus.RST_I)
+        insts = []
 
         scanner_inst = self.gen_scanner()
         insts.append(scanner_inst)
@@ -135,45 +164,43 @@ class FrontPanel(WbSlave):
         unpack_inst = self.packer.unpack(tail_value, elem)
         insts.append(unpack_inst)
 
-        ts_shift = self.data_width - len(self.ts)
-
         req = Signal(False)
+
+        insts.append(self.ctl_reg.gen())
+        insts.append(self.data_reg.gen())
 
         @always_comb
         def tail_value_inst():
             tail_value.next = self.fifo[self.fifo_tail]
         insts.append(tail_value_inst)
 
-        @always_comb
-        def req_inst():
-            req.next = (bus.CYC_I and bus.STB_I and
-                        not bus.ACK_O and not bus.ERR_O and not bus.RTY_O)
-        insts.append(req_inst)
+        @always_seq(system.CLK.posedge, system.RST)
+        def data_inst():
+            self.key_code.RD_DATA.next = 0
+            self.key_pressed.RD_DATA.next = 0
+            self.key_valid.RD_DATA.next = 0
+            self.key_ts.RD_DATA.next = 0
 
-        @always_seq(bus.CLK_I.posedge, bus.RST_I)
-        def wb_inst():
-            bus.ACK_O.next = 0
-            bus.ERR_O.next = 0
-            bus.RTY_O.next = 0
-            # bus.DAT_O.next = intbv(0xdeadbeef)[len(bus.DAT_O):]
-
-            if req:
-                bus.ACK_O.next = 1
-
-            if req and not bus.WE_I:
+            if self.key_code.RD:
                 if self.fifo_tail == self.fifo_head:
-                    bus.DAT_O.next = self.ts << ts_shift
+                    self.key_ts.RD_DATA.next = self.ts
 
                 else:
-                    bus.DAT_O.next = ((elem.ts << ts_shift) |
-                                      (1 << 9) |
-                                      (elem.pressed << 8) |
-                                      (elem.key))
+                    self.key_code.RD_DATA.next = elem.key
+                    self.key_pressed.RD_DATA.next = elem.pressed
+                    self.key_valid.RD_DATA.next = 1
+                    self.key_ts.RD_DATA.next = elem.ts
 
                     self.fifo_tail.next = 0
                     if self.fifo_tail != len(self.fifo) - 1:
                         self.fifo_tail.next = self.fifo_tail + 1
 
-        insts.append(wb_inst)
+        insts.append(data_inst)
+
+        @always_comb
+        def led_inst():
+            self.fp_green.next = self.fp_green_tmp
+            self.fp_white.next = self.fp_white_tmp
+        insts.append(led_inst)
 
         return insts

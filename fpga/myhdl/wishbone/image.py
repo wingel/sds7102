@@ -54,7 +54,7 @@ def top(din, init_b, cclk,
     clk_inst = bufg('bufg_clk', clk_unbuf, clk_buf)
     insts.append(clk_inst)
 
-    system = System(clk_buf, None)
+    spi_system = System(clk_buf, None)
 
     mux = WbMux()
 
@@ -88,9 +88,9 @@ def top(din, init_b, cclk,
     dram_error = Signal(False)
 
     dram_ctl = RegFile('dram_ctl', "DRAM control", [
-        RwField(system, 'dram_rst_i', "Reset", dram_rst_i),
-        RoField(system, 'dram_calib_done', "Calib flag", dram_calib_done),
-        RoField(system, 'dram_error', "Error flag", dram_error),
+        RwField(spi_system, 'dram_rst_i', "Reset", dram_rst_i),
+        RoField(spi_system, 'dram_calib_done', "Calib flag", dram_calib_done),
+        RoField(spi_system, 'dram_error', "Error flag", dram_error),
         ])
     mux.add(dram_ctl, 0x250)
 
@@ -107,11 +107,58 @@ def top(din, init_b, cclk,
     insts.append(mig_inst)
 
     ####################################################################
-    # SoC bus
+    # A MUX and some test code for it
 
     soc_system = System(soc_clk, None)
 
+    sm = SimpleMux(soc_system)
+
+    if 1:
+        # Some RAM
+        sr = SimpleRam(soc_system, 4096, 32)
+        sr_inst = sr.gen()
+        insts.append(sr_inst)
+        sm.add(sr.bus(), addr = 0x8000)
+
+    if 1:
+        # A read only area which returns predictable patterns
+        sa = SimpleAlgo(soc_system, (1<<16), 32)
+        sa_inst = sa.gen()
+        insts.append(sa_inst)
+        sm.add(sa.bus(), 0x10000)
+
+    ####################################################################
+    # Front panel attached to the SoC bus
+
+    frontpanel = FrontPanel(soc_system,
+                            fp_rst, fp_clk, fp_din, fp_green, fp_white,
+                            fifo_depth = 32, data_width = 32,
+                            nr_keys = 64, ts_width = 16,
+                            prescaler = 400)
+    frontpanel_inst = frontpanel.gen()
+    insts.append(frontpanel_inst)
+
+    # These need to be spaced a bit apart, otherwise burst will make
+    # us read from the data_bus register when we only want to read the
+    # ctl_bus register.
+    sm.add(frontpanel.ctl_bus, addr = 0x100)
+    sm.add(frontpanel.data_bus, addr = 0x110)
+
+    ####################################################################
+    # SoC bus
+
+    # First finish the MUX
+    sm.addr_depth = 32 * 1024 * 1024
+    sm_inst = sm.gen()
+    insts.append(sm_inst)
+    simple_bus = sm.bus()
+
     soc_bus = DdrBus(2, 12, 2)
+
+    # And attach the MUX bus to the SoC bus
+    soc_ddr = Ddr()
+    soc_inst = soc_ddr.gen(soc_system, soc_bus, simple_bus)
+    insts.append(soc_inst)
 
     soc_connect_inst = ddr_connect(
         soc_bus, soc_clk, soc_clk_b, None,
@@ -120,35 +167,10 @@ def top(din, init_b, cclk,
     insts.append(soc_connect_inst)
 
     if 1:
-        sm = SimpleMux(system)
-
-        if 1:
-            sr = SimpleRam(soc_system, 4096, 32)
-            sr_inst = sr.gen()
-            insts.append(sr_inst)
-            sm.add(sr.bus(), 0x8000)
-
-        if 1:
-            sa = SimpleAlgo(soc_system, (1<<16), 32)
-            sa_inst = sa.gen()
-            insts.append(sa_inst)
-            sm.add(sa.bus(), 0x10000)
-
-        sm.addr_depth = 32 * 1024 * 1024
-        sm_inst = sm.gen()
-        insts.append(sm_inst)
-        simple_bus = sm.bus()
-
-        soc_ddr = Ddr()
-        soc_inst = soc_ddr.gen(soc_system, soc_bus, simple_bus)
-        insts.append(soc_inst)
-
-    if 1:
-        # Trace soc bus control signals
 
         soc_capture = Signal(False)
         soc_ctl = RegFile('soc_ctl', "SOC control", [
-            RwField(system, 'soc_capture', "Capture samples", soc_capture),
+            RwField(spi_system, 'soc_capture', "Capture samples", soc_capture),
             ])
         mux.add(soc_ctl, 0x231)
         soc_capture_sync = Signal(False)
@@ -260,7 +282,7 @@ def top(din, init_b, cclk,
     if 1:
         adc_capture = Signal(False)
         adc_ctl = RegFile('adc_ctl', "ADC control", [
-            RwField(system, 'adc_capture', "Capture samples", adc_capture),
+            RwField(spi_system, 'adc_capture', "Capture samples", adc_capture),
             ])
         mux.add(adc_ctl, 0x230)
 
@@ -301,7 +323,7 @@ def top(din, init_b, cclk,
             dac8532_sync.next = not shifter_bus.CS[5]
         insts.append(shifter_comb)
 
-        shifter = Shifter(system, shifter_bus, divider = 100)
+        shifter = Shifter(spi_system, shifter_bus, divider = 100)
         addr = 0x210
         for reg in shifter.create_regs():
             mux.add(reg, addr)
@@ -319,7 +341,7 @@ def top(din, init_b, cclk,
     probe_comb_div = 25000
     probe_comp_ctr = Signal(intbv(0, 0, probe_comb_div))
     probe_comp_int = Signal(False)
-    @always_seq (system.CLK.posedge, system.RST)
+    @always_seq (spi_system.CLK.posedge, spi_system.RST)
     def probe_comp_seq():
         if probe_comp_ctr == probe_comb_div - 1:
             probe_comp_int.next = not probe_comp_int
@@ -332,33 +354,6 @@ def top(din, init_b, cclk,
         probe_comp.next = probe_comp_int
         ext_trig_out.next = probe_comp_int
     insts.append(probe_comp_comb)
-
-    ####################################################################
-    # Front panel
-
-    fp_red_reg = Signal(False)
-    fp_white_reg = Signal(False)
-
-    fp_init = Signal(False)
-
-    @always_comb
-    def fp_inst():
-        fp_red.next = fp_red_reg
-        fp_white.next = fp_white_reg
-    insts.append(fp_inst)
-
-    fp_ctl = RegFile('fp_ctl', "Front Panel Control", [
-        RwField(system, 'fp_red', "Red LED", fp_red_reg),
-        RwField(system, 'fp_white', "White LED", fp_white_reg),
-        RwField(system, 'fp_init', "Clear FP scanner", fp_init),
-        ])
-    mux.add(fp_ctl, 0x260)
-
-    fp_slave = FrontPanel(system, fp_rst, fp_clk, fp_din, fp_init,
-                          addr_depth = 1024, data_width = 32,
-                          nr_keys = 64, prescaler = 25,
-                          ts_width = 16)
-    mux.add(fp_slave, 0x400)
 
     ####################################################################
     # Random stuff

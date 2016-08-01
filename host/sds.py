@@ -65,7 +65,7 @@ class SDS(object):
         return a
 
     def read_soc_reg(self, addr):
-        return self.read_regs(addr, 1)[0]
+        return self.read_soc_regs(addr, 1)[0]
 
     def write_soc_regs(self, addr, data):
         cmd = 'write_soc 0x%x %s' % (addr, ' '.join([ '0x%x' % v for v in data ]))
@@ -75,7 +75,7 @@ class SDS(object):
         self.fo.flush()
 
     def write_soc_reg(self, addr, value):
-        self.write_regs(addr, [ value ])
+        self.write_soc_regs(addr, [ value ])
 
     def set_gpio(self, pin, value):
         cmd = 'set_gpio %u %u' % (pin, value)
@@ -229,33 +229,33 @@ class SDS(object):
         return sdr, reg, ddr
 
     def set_red_led(self, value):
+        self.set_gpio(GPF[3], value)
+
+    def set_green_led(self, value):
         assert value >= 0 and value <= 1
-        v = self.read_reg(0x260)
+        v = self.read_soc_reg(0x100)
         if value:
-            v |= 1
+            v |= (1<<0)
         else:
-            v &= ~1
-        self.write_reg(0x260, v)
+            v &= ~(1<<0)
+        self.write_soc_reg(0x100, v)
 
     def set_white_led(self, value):
         assert value >= 0 and value <= 1
-        v = self.read_reg(0x260)
+        v = self.read_soc_reg(0x100)
         if value:
-            v |= 2
+            v |= (1<<1)
         else:
-            v &= ~2
-        self.write_reg(0x260, v)
+            v &= ~(1<<1)
+        self.write_soc_reg(0x100, v)
 
     def fp_init(self):
-        v = self.read_reg(0x260)
-        v |= 4
-        self.write_reg(0x260, v)
+        v = self.read_soc_reg(0x100)
+        v |= 0x100
+        self.write_soc_reg(0x100, v)
         time.sleep(0.1)
-        v &= ~4
-        self.write_reg(0x260, v)
-
-    def set_green_led(self, value):
-        self.set_gpio(GPF[3], value)
+        v &= ~0x100
+        self.write_soc_reg(0x100, v)
 
 def main():
     sds = SDS('sds')

@@ -201,7 +201,7 @@ def iobuf(name, i, o, t, io):
 
     if isinstance(o, SignalType):
         assert len(o) == len(io)
-        o.driven = True
+        o.driven = 'wire'
 
     if isinstance(t, SignalType):
         assert len(t) == len(io)
@@ -210,7 +210,7 @@ def iobuf(name, i, o, t, io):
         t = intbv(~0)[len(io):]
 
     io.read = True
-    io.driven = True
+    io.driven = 'wire'
 
     ii = name + '_ii'
     iname = name + '_block'
@@ -251,7 +251,7 @@ def iobuf_oe(name, i, o, oe, io):
 
     if isinstance(o, SignalType):
         assert len(o) == len(io)
-        o.driven = True
+        o.driven = 'wire'
 
     if isinstance(oe, SignalType):
         assert len(oe) == 1
@@ -260,7 +260,7 @@ def iobuf_oe(name, i, o, oe, io):
         oe = 0
 
     io.read = True
-    io.driven = True
+    io.driven = 'wire'
 
     ii = name + '_ii'
     iname = name + '_block'
@@ -294,7 +294,30 @@ generate
 endgenerate
 '''.strip()
 
-def iddr2(name, d, q0, q1, c0, c1, ce = _one, r = _zero, s = _zero,
+def iddr2(name, d, q0, q1, c0, c1 = None, ce = _one, r = _zero, s = _zero,
+               ddr_alignment = 'NONE',
+               init_q0 = _zero, init_q1 = _zero,
+               srtype = 'SYNC'):
+    insts = []
+
+    print "IDDR2 c0", c0
+    print "IDDR2 c1", c1
+
+    if c1 is None:
+        c1 = Signal(False)
+        @always_comb
+        def c1_comb():
+            c1.next = not c0
+        insts.append(c1_comb)
+
+        print "IDDR2 fake c1", c1
+
+    insts.append(iddr2_int(name, d, q0, q1, c0, c1, ce, r, s,
+                           ddr_alignment, init_q0, init_q1, srtype))
+
+    return insts
+
+def iddr2_int(name, d, q0, q1, c0, c1, ce = _one, r = _zero, s = _zero,
               ddr_alignment = 'NONE',
               init_q0 = _zero, init_q1 = _zero,
               srtype = 'SYNC'):
@@ -327,7 +350,7 @@ def iddr2(name, d, q0, q1, c0, c1, ce = _one, r = _zero, s = _zero,
 
     return comb
 
-iddr2.verilog_code = r'''
+iddr2_int.verilog_code = r'''
 genvar $ii;
 generate
     for ($ii = 0; $ii < $n; $ii = $ii + 1) begin : $iname
@@ -350,63 +373,34 @@ generate
 endgenerate
 '''.strip()
 
-def iddr2_se(name, d, q0, q1, c0, ce = _one, r = _zero, s = _zero,
-             ddr_alignment = 'NONE',
-             init_q0 = _zero, init_q1 = _zero,
-             srtype = 'SYNC'):
-    d.read = True
+def oddr2(name, d0, d1, q, c0, c1 = None, ce = _one, r = _zero, s = _zero,
+          ddr_alignment = 'NONE',
+          init = 0,
+          srtype = 'SYNC'):
+    insts = []
+
+    if c1 is None:
+        c1 = Signal(False)
+        @always_comb
+        def c1_comb():
+            c1.next = not c0
+        insts.append(c1_comb)
+
+    d0.read = True
+    d1.read = True
     c0.read = True
+    c1.read = True
+    q.driven = 'wire'
 
-    if isinstance(ce, SignalType):
-        ce.read = True
+    insts.append(oddr2_int(name, d0, d1, q, c0, c1, ce, r, s,
+                           ddr_alignment, init, srtype))
 
-    if isinstance(r, SignalType):
-        r.read = True
+    return insts
 
-    if isinstance(s, SignalType):
-        s.read = True
-
-    q0.driven = 'wire'
-    q1.driven = 'wire'
-
-    assert len(d) == len(q0) == len(q1)
-
-    ii = name + '_ii'
-    iname = name + '_block'
-    n = len(d)
-
-    @always_comb
-    def comb():
-        q0.next = d
-        q1.next = d
-
-    return comb
-
-iddr2_se.verilog_code = r'''
-genvar $ii;
-generate
-    for ($ii = 0; $ii < $n; $ii = $ii + 1) begin : $iname
-        IDDR2 #(
-        .DDR_ALIGNMENT("$ddr_alignment"),
-        .INIT_Q0($init_q0),
-        .INIT_Q1($init_q1),
-        .SRTYPE("$srtype")
-        ) $name (
-            .D  ($d[$ii]),
-            .Q0 ($q0[$ii]),
-            .Q1  ($q1[$ii]),
-            .C0 ($c0),
-            .C1 (~$c0),
-            .CE ($ce),
-            .R  ($r),
-            .S  ($s)
-        );
-    end
-endgenerate
-'''.strip()
-
-def oddr2(name, d0, d1, q, c0, c1, ce = _one, r = _zero, s = _zero,
-              ddr_alignment = 'NONE', init = 0, srtype = 'SYNC'):
+def oddr2_int(name, d0, d1, q, c0, c1, ce = _one, r = _zero, s = _zero,
+              ddr_alignment = 'NONE',
+              init = 0,
+              srtype = 'SYNC'):
     d0.read = True
     d1.read = True
     c0.read = True
@@ -431,11 +425,11 @@ def oddr2(name, d0, d1, q, c0, c1, ce = _one, r = _zero, s = _zero,
 
     @always_comb
     def comb():
-        q.next = d0
+        q.next = d0 or d1
 
     return comb
 
-oddr2.verilog_code = r'''
+oddr2_int.verilog_code = r'''
 genvar $ii;
 generate
     for ($ii = 0; $ii < $n; $ii = $ii + 1) begin : $iname
@@ -449,58 +443,6 @@ generate
             .Q  ($q[$ii]),
             .C0 ($c0),
             .C1 ($c1),
-            .CE ($ce),
-            .R  ($r),
-            .S  ($s)
-        );
-    end
-endgenerate
-'''.strip()
-
-def oddr2_se(name, d0, d1, q, c0, ce = _one, r = _zero, s = _zero,
-             ddr_alignment = 'NONE', init = 0, srtype = 'SYNC'):
-    d0.read = True
-    d1.read = True
-    c0.read = True
-    q.driven = True
-
-    if isinstance(ce, SignalType):
-        ce.read = True
-
-    if isinstance(r, SignalType):
-        r.read = True
-
-    if isinstance(s, SignalType):
-        s.read = True
-
-    q.driven = 'wire'
-
-    assert len(d0) == len(d1) == len(q)
-
-    ii = name + '_ii'
-    iname = name + '_block'
-    n = len(q)
-
-    @always_comb
-    def comb():
-        q.next = d0 or d1
-
-    return comb
-
-oddr2_se.verilog_code = r'''
-genvar $ii;
-generate
-    for ($ii = 0; $ii < $n; $ii = $ii + 1) begin : $iname
-        ODDR2 #(
-        .DDR_ALIGNMENT("$ddr_alignment"),
-        .INIT($init),
-        .SRTYPE("$srtype")
-        ) $name (
-            .D0 ($d0[$ii]),
-            .D1 ($d1[$ii]),
-            .Q  ($q[$ii]),
-            .C0 ($c0),
-            .C1 (~$c0),
             .CE ($ce),
             .R  ($r),
             .S  ($s)
@@ -539,9 +481,9 @@ def iodelay2_se(
     idatain.read = True
     t.read = True
 
-    dataout.driven = True
-    dout.driven = True
-    tout.driven = True
+    dataout.driven = 'wire'
+    dout.driven = 'wire'
+    tout.driven = 'wire'
 
     ii = name + '_ii'
     iname = name + '_block'
@@ -615,9 +557,9 @@ def iodelay2_fixed(
     idatain.read = True
     t.read = True
 
-    dataout.driven = True
-    dout.driven = True
-    tout.driven = True
+    dataout.driven = 'wire'
+    dout.driven = 'wire'
+    tout.driven = 'wire'
 
     ii = name + '_ii'
     iname = name + '_block'
@@ -745,24 +687,28 @@ def iobuf_ddr2_se(name, i0, i1, o0, o1, oe0, oe1, io, c,
 
     return insts
 
-def iobuf_delay_ddr2_fixed(name, i0, i1, o0, o1, oe0, oe1, io, c,
+def iobuf_delay_ddr2_fixed(name, i0, i1, o0, o1, oe0, oe1, io, clk, clk_b = None,
                            ddr_alignment = 'NONE',
                            srtype = 'SYNC',
+                           idelay_value = 0,
                            odelay_value = 0):
-    i0.driven = True
-    i1.driven = True
+    insts = []
+
+    i0.driven = 'wire'
+    i1.driven = 'wire'
     o0.read = True
     o1.read = True
     oe0.read = True
     oe1.read = True
-    io.driven = True
-    c.read = True
+    io.driven = 'wire'
+    clk.read = True
+
+    if clk_b is not None:
+        clk_b.read = True
 
     i = Signal(intbv(0)[len(io):])
     o = Signal(intbv(0)[len(io):])
     t = Signal(intbv(0)[len(io):])
-
-    insts = []
 
     iobuf_inst = iobuf(name + '_iobuf', i, o, t, io)
     insts.append(iobuf_inst)
@@ -777,28 +723,28 @@ def iobuf_delay_ddr2_fixed(name, i0, i1, o0, o1, oe0, oe1, io, c,
                                t = t2, tout = t,
 
                                data_rate = 'DDR',
-                               idelay_value = 0,
+                               idelay_value = idelay_value,
                                odelay_value = odelay_value,
                                delay_src = 'IO',
                                )
     insts.append(iodelay_inst)
 
-    iddr2_inst = iddr2_se(name + '_iddr2', o2, i0, i1, c,
-                          ddr_alignment = ddr_alignment,
-                          srtype = srtype)
+    iddr2_inst = iddr2(name + '_iddr2', o2, i0, i1, clk, clk_b,
+                       ddr_alignment = ddr_alignment,
+                       srtype = srtype)
     insts.append(iddr2_inst)
 
-    oddr2_inst = oddr2_se(name + '_oddr2', o0, o1, i2, c,
-                          ddr_alignment = ddr_alignment,
-                          srtype = srtype)
+    oddr2_inst = oddr2(name + '_oddr2', o0, o1, i2, clk, clk_b,
+                       ddr_alignment = ddr_alignment,
+                       srtype = srtype)
     insts.append(oddr2_inst)
 
     t0 = Signal(intbv(0)[len(io):])
     t1 = Signal(intbv(0)[len(io):])
 
-    tddr2_inst = oddr2_se(name + '_tddr2', t0, t1, t2, c,
-                          ddr_alignment = ddr_alignment,
-                          srtype = srtype)
+    tddr2_inst = oddr2(name + '_tddr2', t0, t1, t2, clk, clk_b,
+                       ddr_alignment = ddr_alignment,
+                       srtype = srtype)
     insts.append(tddr2_inst)
 
     @always_comb

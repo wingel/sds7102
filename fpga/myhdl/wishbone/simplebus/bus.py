@@ -1,12 +1,12 @@
 #! /usr/bin/python
 import hacking
 if __name__ == '__main__':
-    hacking.reexec_if_needed('test_simplebus.py')
+    hacking.reexec_if_needed('test_ram.py')
 
 from myhdl import Signal, intbv, always_comb
 
-class SimplePort(object):
-    """Simple bus port.
+class SimpleBus(object):
+    """Simple bus.
 
     A simple bus port.  A master presents the ADDR and WR, WR_DATA and
     RD on the first positive edge of the clock.  On a read the slave
@@ -67,9 +67,10 @@ class SimplePort(object):
     RD_DATA and WR_DATA is unambigous, RD_DATA is associated with an
     RD operation, WR_DATA is associated with a WR operation."""
 
-    def __init__(self, addr_depth, data_width):
+    def __init__(self, addr_depth, data_width, align = None):
         self.addr_depth = addr_depth
         self.data_width = data_width
+        self.align = align
 
         addr_width = len(intbv(0, 0, addr_depth))
 

@@ -8,7 +8,7 @@ from myhdl import Signal, ResetSignal, intbv, instance, delay, SignalType
 from timebase import timescale, nsec, usec, msec, sec
 from system import System
 from ddr import Ddr, DdrBus, ddr_connect
-from simplealgo import SimpleAlgo
+from simplebus import SimpleAlgo
 from clk import Clk
 from rst import rstgen
 from util import rename_interface, mask
@@ -31,12 +31,12 @@ def setup(addr_depth = 1024, data_width = 16):
     rename_interface(bus, None)
 
     sa = SimpleAlgo(system, 24, 32)
-    sa_inst = sa.gen(*sa.args())
+    sa_inst = sa.gen()
     insts.append(sa_inst)
 
     ddr = Ddr()
 
-    return insts, ddr.gen, [ system, bus, sa.port ]
+    return insts, ddr.gen, [ system, bus, sa.bus() ]
 
 def reader(system, bus, n, interval):
     @instance

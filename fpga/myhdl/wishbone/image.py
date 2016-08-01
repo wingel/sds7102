@@ -19,9 +19,7 @@ from hybrid_counter import HybridCounter
 from util import tristate
 from regfile import RegFile, Field, RoField, RwField, Port
 from ddr import Ddr, DdrBus, ddr_connect
-from simplemux import SimpleMux
-from simplealgo import SimpleAlgo
-from simpleram import SimpleRam
+from simplebus import SimpleMux, SimpleAlgo, SimpleRam
 from sampler import Sampler
 from shifter import Shifter, ShifterBus
 from ram import Ram
@@ -126,23 +124,23 @@ def top(din, init_b, cclk,
 
         if 1:
             sr = SimpleRam(soc_system, 4096, 32)
-            sr_inst = sr.gen(*sr.args())
+            sr_inst = sr.gen()
             insts.append(sr_inst)
-            sm.add(sr.port(), 0x8000)
+            sm.add(sr.bus(), 0x8000)
 
         if 1:
             sa = SimpleAlgo(soc_system, (1<<16), 32)
-            sa_inst = sa.gen(*sa.args())
+            sa_inst = sa.gen()
             insts.append(sa_inst)
-            sm.add(sa.port(), 0x10000)
+            sm.add(sa.bus(), 0x10000)
 
         sm.addr_depth = 32 * 1024 * 1024
-        sm_inst = sm.gen(*sm.args())
+        sm_inst = sm.gen()
         insts.append(sm_inst)
-        soc_port = sm.port()
+        simple_bus = sm.bus()
 
         soc_ddr = Ddr()
-        soc_inst = soc_ddr.gen(soc_system, soc_bus, soc_port)
+        soc_inst = soc_ddr.gen(soc_system, soc_bus, simple_bus)
         insts.append(soc_inst)
 
     if 1:

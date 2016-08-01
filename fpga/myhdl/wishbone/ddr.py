@@ -128,7 +128,7 @@ class Ddr(object):
     def __init__(self):
         self.CL = 3	# CAS latency
 
-    def gen(self, system, ddr_bus, port):
+    def gen(self, system, ddr_bus, simple_bus):
         aw = len(ddr_bus.A) + len(ddr_bus.BA) + 10
 
         clk = system.CLK
@@ -224,34 +224,34 @@ class Ddr(object):
             wr_mask.next = (ddr_bus.DM0_I << 16) | ddr_bus.DM1_I
         insts.append(wr_data_seq)
 
-        # Send requests to the port
+        # Send requests to the simple_bus
         @always_comb
-        def port_seq():
-            port.ADDR.next = 0
-            port.RD.next = 0
-            port.WR.next = 0
-            port.WR_DATA.next = wr_data
+        def simple_bus_seq():
+            simple_bus.ADDR.next = 0
+            simple_bus.RD.next = 0
+            simple_bus.WR.next = 0
+            simple_bus.WR_DATA.next = wr_data
 
             if rds[self.CL-3]:
-                port.ADDR.next = (adrs[self.CL-3]>>1) & ((1<<len(port.ADDR))-1)
-                port.RD.next = 1
+                simple_bus.ADDR.next = (adrs[self.CL-3]>>1) & ((1<<len(simple_bus.ADDR))-1)
+                simple_bus.RD.next = 1
 
             elif rds[self.CL-2]:
-                port.ADDR.next =  ((adrs[self.CL-2]>>1)+1) & ((1<<len(port.ADDR))-1)
-                port.RD.next = 1
+                simple_bus.ADDR.next =  ((adrs[self.CL-2]>>1)+1) & ((1<<len(simple_bus.ADDR))-1)
+                simple_bus.RD.next = 1
 
             if wrs[self.CL+1]:
-                port.ADDR.next = (adrs[self.CL+1]>>1) & ((1<<len(port.ADDR))-1)
+                simple_bus.ADDR.next = (adrs[self.CL+1]>>1) & ((1<<len(simple_bus.ADDR))-1)
                 if 0 or not wr_mask[0] or not wr_mask[1]:
-                    port.WR.next = 1
+                    simple_bus.WR.next = 1
 
 
             elif wrs[self.CL+2]:
-                port.ADDR.next =  ((adrs[self.CL+2]>>1)+1) & ((1<<len(port.ADDR))-1)
+                simple_bus.ADDR.next =  ((adrs[self.CL+2]>>1)+1) & ((1<<len(simple_bus.ADDR))-1)
                 if 0 or not wr_mask[0] or not wr_mask[1]:
-                    port.WR.next = 1
+                    simple_bus.WR.next = 1
 
-        insts.append(port_seq)
+        insts.append(simple_bus_seq)
 
         @always_comb
         def out_seq():
@@ -261,9 +261,9 @@ class Ddr(object):
             ddr_bus.DQS0_OE.next = 0
             ddr_bus.DQS1_OE.next = 0
 
-            # Speed things up by always letting port*.RD_DATA out
-            ddr_bus.DQ0_O.next = port.RD_DATA[16:0]
-            ddr_bus.DQ1_O.next = port.RD_DATA[32:16]
+            # Speed things up by always letting simple_bus*.RD_DATA out
+            ddr_bus.DQ0_O.next = simple_bus.RD_DATA[16:0]
+            ddr_bus.DQ1_O.next = simple_bus.RD_DATA[32:16]
 
             ddr_bus.DQ0_OE.next = 0
             ddr_bus.DQ1_OE.next = 0

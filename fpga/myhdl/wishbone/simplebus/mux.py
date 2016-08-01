@@ -1,10 +1,10 @@
 #! /usr/bin/python
 import hacking
 if __name__ == '__main__':
-    hacking.reexec_if_needed('test_simplemux.py')
+    hacking.reexec_if_needed('test_mux.py')
 
 from myhdl import Signal, intbv, always_comb, always_seq
-from simplebus import SimplePort
+from bus import SimpleBus
 
 class SimpleMux(object):
     def __init__(self, system):
@@ -20,21 +20,28 @@ class SimpleMux(object):
         self.addr_depth = 0
         self.data_width = 0
 
-        self._port = None
+        self._bus = None
 
-    def port(self):
-        if self._port is None:
-            self._port = SimplePort(self.addr_depth, self.data_width)
-        return self._port
+    def bus(self):
+        if self._bus is None:
+            self._bus = SimpleBus(self.addr_depth, self.data_width)
+        return self._bus
 
-    def args(self):
-        return self.system, self.port()
+    def add(self, slaves, addr = None, align = None, pad = None):
+        if isinstance(slaves, SimpleBus):
+            self.add_one(slaves, addr, align, pad)
+        else:
+            for slave in slaves:
+                self.add_one(slave, addr, align, pad)
 
-    def add(self, slave, addr = None, align = None, pad = None):
-        # We can't add more slaves if we have created our port
-        assert self._port is None
+    def add_one(self, slave, addr = None, align = None, pad = None):
+        # We can't add more slaves if we have created our bus
+        assert self._bus is None
 
         natural_size = 1 << (slave.addr_depth - 1).bit_length()
+
+        if align is None:
+            align = slave.align
 
         if align is None:
             align = self.align
@@ -78,7 +85,8 @@ class SimpleMux(object):
         insts = []
         @always_comb
         def addr_comb():
-            slave.ADDR.next = self.addr_array[i]
+            print len(slave.ADDR), self.addr_array[i], len(self.addr_array[i])
+            slave.ADDR.next = self.addr_array[i] & ((1<<len(slave.ADDR))-1)
         insts.append(addr_comb)
         @always_comb
         def wr_comb():
@@ -86,7 +94,7 @@ class SimpleMux(object):
         insts.append(wr_comb)
         @always_comb
         def wr_data_comb():
-            slave.WR_DATA.next = self.wr_data_array[i]
+            slave.WR_DATA.next = self.wr_data_array[i] & ((1<<len(slave.WR_DATA))-1)
         insts.append(wr_data_comb)
         @always_comb
         def rd_comb():
@@ -98,7 +106,9 @@ class SimpleMux(object):
         insts.append(rd_data_comb)
         return insts
 
-    def gen(self, system, port):
+    def gen(self):
+        system = self.system
+        bus = self.bus()
         slaves = self.slaves
 
         insts = []
@@ -108,14 +118,13 @@ class SimpleMux(object):
 
         n = len(slaves)
         print "number of slaves", n
-        self.addr_array = [ Signal(intbv(0, 0, self.addr_depth)) for _ in range(n) ]
+        self.addr_array = [ Signal(intbv(0)[len(bus.ADDR):]) for _ in range(n) ]
         self.wr_array = [ Signal(False) for _ in range(n) ]
-        self.wr_data_array = [ Signal(intbv(0)[self.data_width:]) for _ in range(n) ]
+        self.wr_data_array = [ Signal(intbv(0)[bus.data_width:]) for _ in range(n) ]
         self.rd_array = [ Signal(False) for _ in range(n) ]
-        self.rd_data_array = [ Signal(intbv(0)[self.data_width:]) for _ in range(n+1) ]
+        self.rd_data_array = [ Signal(intbv(0)[bus.data_width:]) for _ in range(n+1) ]
 
-        for i in range(len(slaves)):
-            slave = slaves[i]
+        for i, slave in enumerate(slaves):
             addr_lo.append(slave.addr)
             addr_hi.append(slave.addr + slave.addr_depth)
 
@@ -127,21 +136,21 @@ class SimpleMux(object):
 
         @always_comb
         def comb():
-            rd_data = intbv(0)[len(port.RD_DATA):]
+            rd_data = intbv(0)[len(bus.RD_DATA):]
 
             for i in range(len(slaves)):
                 lo = addr_lo[i]
                 hi = addr_hi[i]
-                sel = port.ADDR >= lo and port.ADDR < hi
+                sel = bus.ADDR >= lo and bus.ADDR < hi
 
-                self.addr_array[i].next = port.ADDR - lo # ((port.ADDR - lo) # & ((1<<(len(port.ADDR))-1)))
-                self.wr_array[i].next = sel and port.WR
-                self.wr_data_array[i].next = port.WR_DATA
-                self.rd_array[i].next = sel and port.RD
+                self.addr_array[i].next = (bus.ADDR - lo) & ((1<<len(bus.ADDR))-1)
+                self.wr_array[i].next = sel and bus.WR
+                self.wr_data_array[i].next = bus.WR_DATA
+                self.rd_array[i].next = sel and bus.RD
 
                 rd_data |= self.rd_data_array[i]
 
-            port.RD_DATA.next = rd_data
+            bus.RD_DATA.next = rd_data
         insts.append(comb)
 
         return insts

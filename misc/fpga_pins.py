@@ -31,7 +31,7 @@ my_pins = """
 0  E6  IO_L5N_0				Ch 1 BA7046 Hd output
 0  C7  IO_L6P_0				ADF4360-7 LE
 0  A7  IO_L6N_0				Ch 1 LMH6518 CS
-0  D6  IO_L7P_0				Panel - red LED in "Run/Stop" button
+0  D6  IO_L7P_0				Panel - green LED in "Run/Stop" button
 0  C6  IO_L7N_0				Panel - clock
 0  B8  IO_L33P_0			Panel - white LED in "Single" button
 0  A8  IO_L33N_0			DAC8532 CS

@@ -141,7 +141,7 @@ class SDS7102(FPGA):
         'fp_rst':       dict(pins = ('A5'), iostandard = 'LVCMOS33'),
         'fp_clk':       dict(pins = ('C6'), iostandard = 'LVCMOS33'),
         'fp_din':       dict(pins = ('B5'), iostandard = 'LVCMOS33'),
-        'fp_red':       dict(pins = ('D6'), iostandard = 'LVCMOS33'),
+        'fp_green':     dict(pins = ('D6'), iostandard = 'LVCMOS33'),
         'fp_white':     dict(pins = ('B8'), iostandard = 'LVCMOS33'),
 
         'mcb3_dram_ck':	    dict(pins = ('E2'),iostandard = 'DIFF_SSTL18_II'),

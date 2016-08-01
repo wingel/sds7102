@@ -2,6 +2,9 @@
 
 from bus import SimpleBus
 from mux import SimpleMux
+from reg import SimpleReg, Port, Field, DummyField, RoField, RwField
 from ram import SimpleRam
 from algo import SimpleAlgo
+from test_bus import sb_write, sb_read
+
 

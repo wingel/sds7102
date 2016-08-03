@@ -4,6 +4,7 @@ set -x
 /sbin/rmmod fpga
 /sbin/rmmod gpios
 /sbin/rmmod regs
+/sbin/rmmod sds7102-frontpanel
 /sbin/insmod fpga.ko
 /sbin/insmod gpios.ko
 /sbin/insmod regs.ko

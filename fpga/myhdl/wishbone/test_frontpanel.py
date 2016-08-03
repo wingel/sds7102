@@ -29,19 +29,19 @@ def fake_panel(fp_rst, fp_clk, fp_dout, nr_keys):
 
     @instance
     def src():
-        yield delay(1234 * nsec)
+        yield delay(2345 * nsec)
         keys.next[0] = 1
-        yield delay(1234 * nsec)
+        yield delay(2345 * nsec)
         keys.next[0] = 0
 
-        yield delay(1234 * nsec)
+        yield delay(2345 * nsec)
         keys.next[nr_keys - 1] = 1
-        yield delay(1234 * nsec)
+        yield delay(5234 * nsec)
         keys.next[nr_keys - 1] = 0
 
-        yield delay(1234 * nsec)
+        yield delay(2345 * nsec)
         keys.next[nr_keys / 2] = 1
-        yield delay(1234 * nsec)
+        yield delay(2345 * nsec)
         keys.next[nr_keys / 2] = 0
 
     insts.append(src)
@@ -70,7 +70,7 @@ def fake_panel(fp_rst, fp_clk, fp_dout, nr_keys):
 
 class Harness(object):
     def __init__(self, fifo_depth = 5, data_width = 32, nr_keys = 7, ts_width = 8, prescaler = 2):
-        self.duration = 3000 * nsec
+        self.duration = 30000 * nsec
 
         self.stimuli = []
 
@@ -91,7 +91,8 @@ class Harness(object):
                              fp_rst, fp_clk, fp_din, fp_green, fp_white,
                              fifo_depth = fifo_depth, data_width = 32,
                              nr_keys = nr_keys, ts_width = 8,
-                             prescaler = prescaler)
+                             prescaler = prescaler,
+                             nr_overscan = 4, overscan = 4)
         self.mux.add(self.fp.ctl_bus)
         self.mux.add(self.fp.data_bus)
 
@@ -102,7 +103,7 @@ class Harness(object):
         @instance
         def master():
             yield delay(299 * nsec)
-            for i in range(100):
+            while 1:
                 yield delay(99 * nsec)
                 yield(sb_read(self.system, self.bus, 1))
         self.stimuli.append(master)

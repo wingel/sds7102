@@ -13,7 +13,7 @@ from vcd import VCDOutput
 def main():
     sds = SDS(sys.argv[1])
 
-    if 1:
+    if 0:
         sds.set_red_led(0)
         sds.set_green_led(0)
         sds.set_white_led(0)
@@ -108,7 +108,8 @@ def main():
             time.sleep(0.1)
 
         with open('frontpanel.vcd', 'w') as f:
-            vcd = VCDOutput(f, names)
+            vcd = VCDOutput(f)
+            vcd.write_header(names)
             t = 0
             last_ts = 0
             last = 0
@@ -124,11 +125,15 @@ def main():
                 t += (ts - last_ts) & 0xffff
                 last_ts = ts
 
-                vcd.write_timestamp(t)
+                if key >= len(names):
+                    print "invalid key", key
+                    continue
 
+                vcd.write_timestamp(t)
                 if active:
                     print "0x%08x" % v, names[key]
-                    vcd.write_bit(names[key], pressed)
+                    vcd.write_value(names[key], pressed)
+                    vcd.f.flush()
 
                 else:
                     if not sys.argv[0]:
@@ -136,7 +141,8 @@ def main():
 
                     time.sleep(0.1)
 
-        if 1:
+
+        if 0:
             sds.fp_init()
 
 if __name__ == '__main__':

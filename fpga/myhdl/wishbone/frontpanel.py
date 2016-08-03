@@ -16,9 +16,34 @@ class Entry(object):
         self.ts = Signal(intbv(0)[ts_width:])
 
 class FrontPanel(object):
+
+    """Module for the SDS7102 front panel.
+
+    The rotary encoders are very noisy.  They are the first 16
+    switches scanned by the front panel, so add an overscan mode where
+    the first 16 switches are scanned four times for each time all the
+    rest of the buttons are scanned.
+
+    When a switch is closed there is a hard pulldown to ground which
+    is quite fast.  The pull-up is slower, probably due to capacitance
+    on the front panel PCB.  Stretch the active pulses (which are
+    active low on the input, but active high internally in the
+    frontpanel scanner) so that this is hidden from the user.
+
+    These two together make the frontpanel decently useful.  There are
+    still false movements of the rotary encoders, but it's not too
+    bad.  Higher level code will have to handle acceleration anyway
+    and if it does it should just ignore occasional reversals of
+    direction when the rotation speed is high."""
+
     def __init__(self, system, fp_rst, fp_clk, fp_din, fp_green, fp_white,
-                 fifo_depth = 256, data_width = 32,
-                 nr_keys = 64, ts_width = 10, prescaler = 400):
+                 fifo_depth = 64,
+                 data_width = 32,
+                 nr_keys = 64,
+                 ts_width = 16,
+                 prescaler = 400,
+                 nr_overscan_keys = 16, overscan_ratio = 16,
+                 stretch = 7):
         self.system = system
 
         self.fp_rst = fp_rst
@@ -31,6 +56,9 @@ class FrontPanel(object):
         self.nr_keys = nr_keys
 
         self.prescaler = prescaler
+        self.nr_overscan_keys = nr_overscan_keys
+        self.overscan_ratio = overscan_ratio
+        self.stretch = stretch
 
         self.ts = Signal(intbv(0)[ts_width:])
 
@@ -77,6 +105,8 @@ class FrontPanel(object):
 
         cnt = Signal(intbv(0, 0, self.prescaler))
 
+        overscan_cnt = Signal(intbv(0, 0, self.overscan_ratio))
+
         rst = Signal(False)
         clk = Signal(False)
 
@@ -87,6 +117,9 @@ class FrontPanel(object):
 
         first = Signal(False)
         last = Signal(intbv(0)[self.nr_keys:])
+
+        stretch = [ Signal(intbv(0, 0, self.stretch + 1))
+                    for _ in range(self.nr_keys) ]
 
         ready = Signal(False)
 
@@ -113,6 +146,11 @@ class FrontPanel(object):
                 self.ts.next = 1
                 self.fifo_head.next = self.fifo_tail
 
+                overscan_cnt.next = 0
+
+                for i in range(len(stretch)):
+                    stretch[i].next = 0
+
             else:
                 next_head = 0
                 if self.fifo_head != len(self.fifo) - 1:
@@ -130,21 +168,33 @@ class FrontPanel(object):
                         else:
                             clk.next = 1
 
-                            if idx != self.nr_keys - 1:
-                                rst.next = 0
-                                idx.next = idx + 1
-
-                            else:
+                            if (idx == self.nr_keys - 1 or
+                                (overscan_cnt != 0 and
+                                 idx == self.nr_overscan_keys - 1)):
                                 rst.next = 1
                                 idx.next = 0
                                 first.next = 0
                                 self.ts.next = self.ts + 1
 
-                            if first or last[elem.key] != elem.pressed:
+                                if overscan_cnt:
+                                    overscan_cnt.next = overscan_cnt - 1
+                                else:
+                                    overscan_cnt.next = self.overscan_ratio - 1
+
+                            else:
+                                rst.next = 0
+                                idx.next = idx + 1
+
+                            if stretch[elem.key] != 0:
+                                stretch[elem.key].next = stretch[elem.key] - 1
+                            elif first or last[elem.key] != elem.pressed:
                                 last.next[elem.key] = elem.pressed
 
                                 self.fifo[self.fifo_head].next = packed
                                 self.fifo_head.next = next_head
+
+                            if elem.pressed:
+                                stretch[elem.key].next = self.stretch
 
         insts.append(scanner_seq)
 

@@ -131,10 +131,7 @@ def top(din, init_b, cclk,
     # Front panel attached to the SoC bus
 
     frontpanel = FrontPanel(soc_system,
-                            fp_rst, fp_clk, fp_din, fp_green, fp_white,
-                            fifo_depth = 32, data_width = 32,
-                            nr_keys = 64, ts_width = 16,
-                            prescaler = 400)
+                            fp_rst, fp_clk, fp_din, fp_green, fp_white)
     frontpanel_inst = frontpanel.gen()
     insts.append(frontpanel_inst)
 

@@ -1,4 +1,12 @@
-/* A Linux device driver that watches for GPIO changes on the SDS7102
+/* Test driver which detects GPIO activity.
+ *
+ * Copyright (C) 2016 Christer Weinigel <christer@weinigel.se>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation version 2.
+ *
+ * A Linux device driver that watches for GPIO changes on the SDS7102
  * scope.  Just do a "insmod gpios.ko" and it will print a log message
  * to the console every time one of the watched GPIOs change. */
 

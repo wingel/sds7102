@@ -1,8 +1,17 @@
-/* A driver which talks to the FPGA on the SDS7102.  This is
- * actually a bidirectional SPI driver, but it's really stupid.  The
- * chip select is asserted when the device is opened and then the
- * userspace program writes one word with the address and read/write
- * bit.  After that it does a read or a write to read or write data.
+/* Bitbanging bidirectional almost-SPI driver.
+ *
+ *
+ * Copyright (C) 2016 Christer Weinigel <christer@weinigel.se>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation version 2.
+ *
+ * This driver talks to the FPGA on the SDS7102.  This is actually a
+ * bidirectional SPI driver, but it's really stupid.  The chip select
+ * is asserted when the device is opened and then the userspace
+ * program writes one word with the address and read/write bit.  After
+ * that it does a read or a write to read or write data.
  *
  * This should really be replaced by the spi-gpio driver in the Linux
  * kernel, but in that case that driver has to be modified to support

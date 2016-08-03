@@ -1,5 +1,11 @@
 /* A driver to program the Xilinx FPGA on the SDS7102 scope.
  *
+ * Copyright (C) 2016 Christer Weinigel <christer@weinigel.se>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation version 2.
+ *
  * When the device is opened the FPGA is initialized by pulling PROG_B
  * low and then waiting for INIT_B to go hi.  Userspace then writes
  * the bitstream to the device using CCLK and DIN.  When the device is
@@ -257,4 +263,4 @@ module_exit(fpga_cleanup);
 
 MODULE_AUTHOR("Christer Weinigel <christer@weinigel.se>");
 MODULE_DESCRIPTION("Xilinx Slave Serial Driver for SDS7102");
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("GPL v2");

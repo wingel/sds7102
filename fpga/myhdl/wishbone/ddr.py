@@ -76,7 +76,7 @@ def ddr_connect(bus, clk, clk_b, rst,
     # other things for the moment, so...
 
     di = 120
-    do = 100
+    do = 0
 
     dqs_iobuf_inst = iobuf_delay_ddr2_fixed(prefix + 'dqs',
                                             bus.DQS0_I,

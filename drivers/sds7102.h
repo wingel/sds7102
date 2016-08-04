@@ -33,4 +33,13 @@
 #define MISC_LED_GREEN	(1<<0)
 #define MISC_LED_WHITE	(1<<1)
 
+/* 4kByte block RAM */
+#define BLOCK_RAM_BASE	(SDS7102_REG_BASE + 0x20000)
+#define BLOCK_RAM_SIZE  4096
+
+/* Read-only region which returns a predictable pattern based on the
+ * address */
+#define ALGO_MEM_BASE	(SDS7102_REG_BASE + 0x40000)
+#define ALGO_MEM_SIZE	(4<<16)
+
 #endif /* _SDS7102_H */

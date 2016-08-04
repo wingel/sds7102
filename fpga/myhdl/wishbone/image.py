@@ -118,7 +118,7 @@ def top(din, init_b, cclk,
 
     if 1:
         # Some RAM
-        sr = SimpleRam(soc_system, 4096, 32)
+        sr = SimpleRam(soc_system, 1024, 32)
         sr_inst = sr.gen()
         insts.append(sr_inst)
         sm.add(sr.bus(), addr = 0x8000)

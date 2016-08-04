@@ -26,6 +26,9 @@ from ram import Ram
 from mig import mig
 from frontpanel import FrontPanel
 
+from simplebus import SimpleReg
+from simplebus import RwField as SimpleRwField
+
 def top(din, init_b, cclk,
         ref_clk,
         soc_clk_p, soc_clk_n, soc_cs, soc_ras, soc_cas, soc_we, soc_ba, soc_a,
@@ -36,7 +39,7 @@ def top(din, init_b, cclk,
         trig_p, trig_n, ba7406_vd, ba7406_hd, ac_trig,
         probe_comp, ext_trig_out,
         i2c_scl, i2c_sda,
-        fp_rst, fp_clk, fp_din, fp_green, fp_white,
+        fp_rst, fp_clk, fp_din, led_green, led_white,
         mcb3_dram_ck, mcb3_dram_ck_n,
         mcb3_dram_ras_n, mcb3_dram_cas_n, mcb3_dram_we_n,
         mcb3_dram_ba, mcb3_dram_a, mcb3_dram_odt,
@@ -130,8 +133,7 @@ def top(din, init_b, cclk,
     ####################################################################
     # Front panel attached to the SoC bus
 
-    frontpanel = FrontPanel(soc_system,
-                            fp_rst, fp_clk, fp_din, fp_green, fp_white)
+    frontpanel = FrontPanel(soc_system, fp_rst, fp_clk, fp_din)
     frontpanel_inst = frontpanel.gen()
     insts.append(frontpanel_inst)
 
@@ -139,7 +141,27 @@ def top(din, init_b, cclk,
     # us read from the data_bus register when we only want to read the
     # ctl_bus register.
     sm.add(frontpanel.ctl_bus, addr = 0x100)
-    sm.add(frontpanel.data_bus, addr = 0x110)
+    sm.add(frontpanel.data_bus, addr = 0x104)
+
+    ####################################################################
+    # LEDs on the front panel
+
+    led_green_tmp = Signal(False)
+    led_white_tmp = Signal(False)
+
+    misc_reg = SimpleReg(soc_system, 'misc', "Miscellaneous", [
+        SimpleRwField('green', "Green LED", led_green_tmp),
+        SimpleRwField('white', "White LED", led_white_tmp),
+        ])
+
+    sm.add(misc_reg.bus(), addr = 0x108)
+    insts.append(misc_reg.gen())
+
+    @always_comb
+    def led_inst():
+        led_green.next = led_green_tmp
+        led_white.next = led_white_tmp
+    insts.append(led_inst)
 
     ####################################################################
     # SoC bus

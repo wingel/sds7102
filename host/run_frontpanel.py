@@ -13,7 +13,7 @@ from vcd import VCDOutput
 def main():
     sds = SDS(sys.argv[1])
 
-    if 0:
+    if 1:
         sds.set_red_led(0)
         sds.set_green_led(0)
         sds.set_white_led(0)
@@ -115,7 +115,7 @@ def main():
             last = 0
 
             while 1:
-                v = sds.read_soc_reg(0x110)
+                v = sds.read_soc_reg(0x104)
 
                 ts = (v >> 16) & 0xffff
                 active = (v >> 9) & 1

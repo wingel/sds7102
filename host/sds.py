@@ -233,28 +233,28 @@ class SDS(object):
 
     def set_green_led(self, value):
         assert value >= 0 and value <= 1
-        v = self.read_soc_reg(0x100)
+        v = self.read_soc_reg(0x108)
         if value:
             v |= (1<<0)
         else:
             v &= ~(1<<0)
-        self.write_soc_reg(0x100, v)
+        self.write_soc_reg(0x108, v)
 
     def set_white_led(self, value):
         assert value >= 0 and value <= 1
-        v = self.read_soc_reg(0x100)
+        v = self.read_soc_reg(0x108)
         if value:
             v |= (1<<1)
         else:
             v &= ~(1<<1)
-        self.write_soc_reg(0x100, v)
+        self.write_soc_reg(0x108, v)
 
     def fp_init(self):
         v = self.read_soc_reg(0x100)
-        v |= 0x100
+        v |= 1
         self.write_soc_reg(0x100, v)
         time.sleep(0.1)
-        v &= ~0x100
+        v &= ~1
         self.write_soc_reg(0x100, v)
 
 def main():

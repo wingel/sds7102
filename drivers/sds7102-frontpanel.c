@@ -40,21 +40,7 @@
 
 #define FP_NAME "sds7102-frontpanel"
 
-#define FP_NR_KEYS	64
 #define FP_POLL_INTERVAL 10
-
-/* Frontpanel control register */
-#define FP_CTRL		0x400
-#define FP_INIT		(1<<8)
-
-/* Frontpanel data register */
-#define FP_DATA		0x440
-#define FP_KEY_SHIFT	0
-#define FP_KEY_MASK	0xff
-#define FP_PRESSED	(1<<8)
-#define FP_ACTIVE	(1<<9)
-#define FP_TS_SHIFT	16
-#define FP_TS_MASK	0xffff
 
 /* A simple keymap which maps from scancodes to key codes or the coder
  * for a relative axis. */
@@ -260,7 +246,7 @@ static int __init sds7102_frontpanel_init(void)
 	if (!fp_dev)
 		goto out;
 
-	fp_dev->reg = ioremap(SDS7102_REG_BASE, SDS7102_REG_SIZE);
+	fp_dev->reg = ioremap(FP_REG_BASE, FP_REG_SIZE);
 	if (!fp_dev->reg)
 		goto out;
 

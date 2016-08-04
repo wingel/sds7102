@@ -36,7 +36,7 @@ class FrontPanel(object):
     and if it does it should just ignore occasional reversals of
     direction when the rotation speed is high."""
 
-    def __init__(self, system, fp_rst, fp_clk, fp_din, fp_green, fp_white,
+    def __init__(self, system, fp_rst, fp_clk, fp_din,
                  fifo_depth = 64,
                  data_width = 32,
                  nr_keys = 64,
@@ -49,9 +49,6 @@ class FrontPanel(object):
         self.fp_rst = fp_rst
         self.fp_clk = fp_clk
         self.fp_din = fp_din
-
-        self.fp_green = fp_green
-        self.fp_white = fp_white
 
         self.nr_keys = nr_keys
 
@@ -78,13 +75,7 @@ class FrontPanel(object):
 
         self._bus = None
 
-        self.fp_green_tmp = Signal(False)
-        self.fp_white_tmp = Signal(False)
-
         self.ctl_reg = SimpleReg(system, 'fp_ctl', "Frontpanel Control", [
-            RwField('red', "Red LED", self.fp_green_tmp),
-            RwField('white', "White LED", self.fp_white_tmp),
-            DummyField(6),
             RwField('init', "Initialize frontpanel when true", self.fp_init),
             ])
 
@@ -246,11 +237,5 @@ class FrontPanel(object):
                         self.fifo_tail.next = self.fifo_tail + 1
 
         insts.append(data_inst)
-
-        @always_comb
-        def led_inst():
-            self.fp_green.next = self.fp_green_tmp
-            self.fp_white.next = self.fp_white_tmp
-        insts.append(led_inst)
 
         return insts

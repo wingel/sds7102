@@ -62,19 +62,29 @@ class Sampler(WbSlave):
                 if 1 or not bus.WE_I and bus.ADR_I < len(self.ram):
                     bus.DAT_O.next = self.ram[bus.ADR_I]
 
-        sample_skip = Signal(intbv(0, 0, self.skip_cnt + 1))
         sample_addr = Signal(intbv(0, 0, self.addr_depth+1))
-        @always(self.sample_clk.posedge)
-        def inst():
-            if self.sample_enable:
-                if sample_addr < self.addr_depth:
-                    if sample_skip == self.skip_cnt:
-                        self.ram[sample_addr].next = self.sample_data
+
+        if self.skip_cnt:
+            sample_skip = Signal(intbv(0, 0, self.skip_cnt + 1))
+            @always(self.sample_clk.posedge)
+            def inst():
+                if self.sample_enable:
+                    if sample_addr < self.addr_depth:
+                        if sample_skip == self.skip_cnt:
+                            self.ram[sample_addr].next = self.sample_data
+                            sample_addr.next = sample_addr + 1
+                            sample_skip.next = 0
+                        else:
+                            sample_skip.next = sample_skip + 1
+                else:
+                    sample_addr.next = 0
+        else:
+            @always(self.sample_clk.posedge)
+            def inst():
+                if self.sample_enable:
+                    if sample_addr < self.addr_depth:
                         sample_addr.next = sample_addr + 1
-                        sample_skip.next = 0
-                    else:
-                        sample_skip.next = sample_skip + 1
-            else:
-                sample_addr.next = 0
+                else:
+                    sample_addr.next = 0
 
         return comb, seq, inst

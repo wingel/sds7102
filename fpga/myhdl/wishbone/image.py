@@ -5,12 +5,12 @@ if __name__ == '__main__':
 
 from pprint import pprint
 
-from myhdl import (Signal, TristateSignal, ConcatSignal,
+from myhdl import (Signal, ResetSignal, TristateSignal, ConcatSignal,
                    intbv, always_comb, always_seq)
 from rhea.cores.misc import syncro
 
 from spartan6 import (startup_spartan6, bufg,
-                      ibufds, ibufgds_diff_out, ibufds_vec, iddr2)
+                      ibufds, ibufgds, ibufgds_diff_out, ibufds_vec, iddr2)
 
 from system import System
 from spi_slave import SpiInterface, SpiSlave
@@ -23,7 +23,7 @@ from simplebus import SimpleMux, SimpleAlgo, SimpleRam
 from sampler import Sampler
 from shifter import Shifter, ShifterBus
 from ram import Ram
-from mig import mig
+from mig import Mig, mig_with_tb
 from frontpanel import FrontPanel
 
 from simplebus import SimpleReg
@@ -83,31 +83,65 @@ def top(din, init_b, cclk,
     soc_clk_b = Signal(False)
     soc_clk_b._name = 'soc_clk_b' # Must match name of timing spec in ucf file
 
-    dram_rst_i = Signal(False)
-    dram_clk_p = soc_clk_p
-    dram_clk_n = soc_clk_n
-
+    dram_rst = ResetSignal(val = False, active = True, async = True)
     dram_calib_done = Signal(False)
     dram_error = Signal(False)
 
     dram_ctl = RegFile('dram_ctl', "DRAM control", [
-        RwField(spi_system, 'dram_rst_i', "Reset", dram_rst_i),
+        RwField(spi_system, 'dram_rst_i', "Reset", dram_rst),
         RoField(spi_system, 'dram_calib_done', "Calib flag", dram_calib_done),
-        RoField(spi_system, 'dram_error', "Error flag", dram_error),
+#        RoField(spi_system, 'dram_error', "Error flag", dram_error),
         ])
     mux.add(dram_ctl, 0x250)
 
-    mig_inst = mig(
-        dram_rst_i, dram_clk_p, dram_clk_n,
-        dram_calib_done, dram_error,
+    if 0:
+        dram_clk_p = soc_clk_p
+        dram_clk_n = soc_clk_n
 
-        mcb3_dram_ck, mcb3_dram_ck_n,
-        mcb3_dram_ras_n, mcb3_dram_cas_n, mcb3_dram_we_n,
-        mcb3_dram_ba, mcb3_dram_a, mcb3_dram_odt,
-        mcb3_dram_dqs, mcb3_dram_dqs_n, mcb3_dram_udqs, mcb3_dram_udqs_n,
-        mcb3_dram_dm, mcb3_dram_udm, mcb3_dram_dq,
-        soc_clk, soc_clk_b)
-    insts.append(mig_inst)
+        mig_inst = mig_with_tb(
+            dram_rst, dram_clk_p, dram_clk_n,
+            dram_calib_done, dram_error,
+
+            mcb3_dram_ck, mcb3_dram_ck_n,
+            mcb3_dram_ras_n, mcb3_dram_cas_n, mcb3_dram_we_n,
+            mcb3_dram_ba, mcb3_dram_a, mcb3_dram_odt,
+            mcb3_dram_dqs, mcb3_dram_dqs_n, mcb3_dram_udqs, mcb3_dram_udqs_n,
+            mcb3_dram_dm, mcb3_dram_udm, mcb3_dram_dq,
+            soc_clk, soc_clk_b)
+        insts.append(mig_inst)
+
+    else:
+        soc_clk_ibuf = Signal(False)
+        soc_clk_ibuf_inst = ibufgds('soc_clk_ibuf_inst',
+                                    soc_clk_p, soc_clk_n,
+                                    soc_clk_ibuf)
+        insts.append(soc_clk_ibuf_inst)
+
+        mig = Mig()
+        mig.rst = dram_rst
+        mig.clkin = soc_clk_ibuf
+        mig.soc_clk = soc_clk
+        mig.soc_clk_b = soc_clk_b
+
+        mig.calib_done = dram_calib_done
+
+        mig.mcbx_dram_addr = mcb3_dram_a
+        mig.mcbx_dram_ba = mcb3_dram_ba
+        mig.mcbx_dram_ras_n = mcb3_dram_ras_n
+        mig.mcbx_dram_cas_n = mcb3_dram_cas_n
+        mig.mcbx_dram_we_n = mcb3_dram_we_n
+        mig.mcbx_dram_clk = mcb3_dram_ck
+        mig.mcbx_dram_clk_n = mcb3_dram_ck_n
+        mig.mcbx_dram_dq = mcb3_dram_dq
+        mig.mcbx_dram_dqs = mcb3_dram_dqs
+        mig.mcbx_dram_dqs_n = mcb3_dram_dqs_n
+        mig.mcbx_dram_udqs = mcb3_dram_udqs
+        mig.mcbx_dram_udqs_n = mcb3_dram_udqs_n
+        mig.mcbx_dram_udm = mcb3_dram_udm
+        mig.mcbx_dram_ldm = mcb3_dram_dm
+
+        mig_inst = mig.gen()
+        insts.append(mig_inst)
 
     ####################################################################
     # A MUX and some test code for it
@@ -420,33 +454,40 @@ def impl():
     brd = get_board('sds7102')
     flow = brd.get_flow(top = top)
 
-    flow.add_files([
-        '../../../ip/mig/rtl/example_top.v',
-        '../../../ip/mig/rtl/infrastructure.v',
-        '../../../ip/mig/rtl/mcb_controller/iodrp_controller.v',
-        '../../../ip/mig/rtl/mcb_controller/iodrp_mcb_controller.v',
-        '../../../ip/mig/rtl/mcb_controller/mcb_raw_wrapper.v',
-        '../../../ip/mig/rtl/mcb_controller/mcb_soft_calibration.v',
-        '../../../ip/mig/rtl/mcb_controller/mcb_soft_calibration_top.v',
-        '../../../ip/mig/rtl/mcb_controller/mcb_ui_top.v',
-        '../../../ip/mig/rtl/memc_tb_top.v',
-        '../../../ip/mig/rtl/memc_wrapper.v',
-        '../../../ip/mig/rtl/traffic_gen/afifo.v',
-        '../../../ip/mig/rtl/traffic_gen/cmd_gen.v',
-        '../../../ip/mig/rtl/traffic_gen/cmd_prbs_gen.v',
-        '../../../ip/mig/rtl/traffic_gen/data_prbs_gen.v',
-        '../../../ip/mig/rtl/traffic_gen/init_mem_pattern_ctr.v',
-        '../../../ip/mig/rtl/traffic_gen/mcb_flow_control.v',
-        '../../../ip/mig/rtl/traffic_gen/mcb_traffic_gen.v',
-        '../../../ip/mig/rtl/traffic_gen/rd_data_gen.v',
-        '../../../ip/mig/rtl/traffic_gen/read_data_path.v',
-        '../../../ip/mig/rtl/traffic_gen/read_posted_fifo.v',
-        '../../../ip/mig/rtl/traffic_gen/sp6_data_gen.v',
-        '../../../ip/mig/rtl/traffic_gen/tg_status.v',
-        '../../../ip/mig/rtl/traffic_gen/v6_data_gen.v',
-        '../../../ip/mig/rtl/traffic_gen/wr_data_gen.v',
-        '../../../ip/mig/rtl/traffic_gen/write_data_path.v',
-        ])
+    if 1:
+        flow.add_files([
+            '../../../ip/mig/rtl/mcb_controller/iodrp_controller.v',
+            '../../../ip/mig/rtl/mcb_controller/iodrp_mcb_controller.v',
+            '../../../ip/mig/rtl/mcb_controller/mcb_raw_wrapper.v',
+            '../../../ip/mig/rtl/mcb_controller/mcb_soft_calibration.v',
+            '../../../ip/mig/rtl/mcb_controller/mcb_soft_calibration_top.v',
+            '../../../ip/mig/rtl/mcb_controller/mcb_ui_top.v',
+            ])
+
+    if 0:
+        flow.add_files([
+            '../../../ip/mig/rtl/example_top.v',
+            '../../../ip/mig/rtl/infrastructure.v',
+
+            '../../../ip/mig/rtl/memc_wrapper.v',
+
+            '../../../ip/mig/rtl/memc_tb_top.v',
+            '../../../ip/mig/rtl/traffic_gen/afifo.v',
+            '../../../ip/mig/rtl/traffic_gen/cmd_gen.v',
+            '../../../ip/mig/rtl/traffic_gen/cmd_prbs_gen.v',
+            '../../../ip/mig/rtl/traffic_gen/data_prbs_gen.v',
+            '../../../ip/mig/rtl/traffic_gen/init_mem_pattern_ctr.v',
+            '../../../ip/mig/rtl/traffic_gen/mcb_flow_control.v',
+            '../../../ip/mig/rtl/traffic_gen/mcb_traffic_gen.v',
+            '../../../ip/mig/rtl/traffic_gen/rd_data_gen.v',
+            '../../../ip/mig/rtl/traffic_gen/read_data_path.v',
+            '../../../ip/mig/rtl/traffic_gen/read_posted_fifo.v',
+            '../../../ip/mig/rtl/traffic_gen/sp6_data_gen.v',
+            '../../../ip/mig/rtl/traffic_gen/tg_status.v',
+            '../../../ip/mig/rtl/traffic_gen/v6_data_gen.v',
+            '../../../ip/mig/rtl/traffic_gen/wr_data_gen.v',
+            '../../../ip/mig/rtl/traffic_gen/write_data_path.v',
+            ])
 
     flow.run()
     info = flow.get_utilization()

@@ -262,23 +262,12 @@ def main():
 
     # sds.capture(16)
 
-    if 0:
+    if 1:
         print "0x250 -> 0x%08x" % sds.read_reg(0x250)
         sds.write_reg(0x250, 0)
         for i in range(10):
             print "0x250 -> 0x%08x" % sds.read_reg(0x250)
             time.sleep(0.1)
-
-    o = 0x10
-    data = sds.read_soc_regs(0x10000 + o, 1<<16)
-    for i, v in enumerate(data):
-        t = (i + o) & 0xffff
-        expected = ((t ^ (t >> 1)) << 16) | t
-        if 1 or v != expected:
-            print "%08x %08x (%08x)" % (t, v, expected),
-            if v != expected:
-                print "<== ERROR",
-            print
 
 if __name__ == '__main__':
     main()

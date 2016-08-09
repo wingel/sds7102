@@ -257,17 +257,72 @@ class SDS(object):
         v &= ~1
         self.write_soc_reg(0x100, v)
 
+def decode_mig_status(v):
+    print "dram status  0x%08x" % v
+    print "reset        %u" % ((v >> 0) & 1)
+    print "calib_done   %u" % ((v >> 1) & 1)
+    print "cmd_empty    %u" % ((v >> 2) & 1)
+    print "cmd_full     %u" % ((v >> 3) & 1)
+    print "wr_empty     %u" % ((v >> 4) & 1)
+    print "wr_full      %u" % ((v >> 5) & 1)
+    print "wr_error     %u" % ((v >> 6) & 1)
+    print "wr_underrun  %u" % ((v >> 7) & 1)
+    print "wr_count     %u" % ((v >> 8) & 0x7f)
+    print "rd_empty     %u" % ((v >> 15) & 1)
+    print "rd_full      %u" % ((v >> 16) & 1)
+    print "rd_error     %u" % ((v >> 17) & 1)
+    print "rd_overflow  %u" % ((v >> 18) & 1)
+    print "rd_count     %u" % ((v >> 19) & 0x7f)
+    print
+
 def main():
     sds = SDS('sds')
 
     # sds.capture(16)
 
+    print "counts 0x%08x" % sds.read_soc_reg(0x202)
+
+    sds.write_soc_reg(0x210, 0xbeeffeed)
+    print "0x%08x" % sds.read_soc_reg(0x210)
+    sds.write_soc_reg(0x210, 0xdeadbeef)
+    print "0x%08x" % sds.read_soc_reg(0x210)
+
+    decode_mig_status(sds.read_soc_reg(0x201))
+
     if 1:
-        print "0x250 -> 0x%08x" % sds.read_reg(0x250)
-        sds.write_reg(0x250, 0)
-        for i in range(10):
-            print "0x250 -> 0x%08x" % sds.read_reg(0x250)
-            time.sleep(0.1)
+        sds.write_soc_reg(0x201, 1)
+        decode_mig_status(sds.read_soc_reg(0x201))
+        sds.write_soc_reg(0x201, 0)
+        decode_mig_status(sds.read_soc_reg(0x201))
+        time.sleep(0.1)
+
+    decode_mig_status(sds.read_soc_reg(0x201))
+
+    n = 3
+
+    if 1:
+        print "write to FIFO"
+        for i in range(n):
+            sds.write_soc_reg(0x210, (0xf00f0000 + i) & 0xffffffff)
+            # a read seems to be needed to flush the write buffer
+            print "back 0x%08x" % sds.read_soc_reg(0x210)
+        decode_mig_status(sds.read_soc_reg(0x201))
+        print "write to DDR"
+        sds.write_soc_reg(0x200, 34 | ((n-1)<<24) | (0<<30))
+        time.sleep(0.1)
+        decode_mig_status(sds.read_soc_reg(0x201))
+
+    n = 32
+    if 1:
+        print "read from DDR"
+        sds.write_soc_reg(0x200, 32 | ((n-1)<<24) | (1<<30))
+        time.sleep(0.1)
+        decode_mig_status(sds.read_soc_reg(0x201))
+        print "read from FIFO"
+        for i in range(n):
+            print "rd %2d -> 0x%08x" % (i, sds.read_soc_reg(0x211))
+        time.sleep(0.1)
+        decode_mig_status(sds.read_soc_reg(0x201))
 
 if __name__ == '__main__':
     main()

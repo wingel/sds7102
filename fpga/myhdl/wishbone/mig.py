@@ -103,6 +103,39 @@ example_top #(
 );
 '''
 
+class MigCmdPort(object):
+    def __init__(self, clk):
+        self.clk = clk
+        self.en = Signal(False)
+        self.instr = Signal(intbv(0)[3:])
+        self.bl = Signal(intbv(0)[6:])
+        self.byte_addr = Signal(intbv(0)[29:])
+        self.empty = Signal(False)
+        self.full = Signal(False)
+
+class MigWrPort(object):
+    def __init__(self, clk, data_width = 32):
+        self.clk = clk
+        self.en = Signal(False)
+        self.mask = Signal(intbv(0)[data_width/8:])
+        self.data = Signal(intbv(0)[data_width:])
+        self.full = Signal(False)
+        self.empty = Signal(False)
+        self.count = Signal(intbv(0)[7:])
+        self.underrun = Signal(False)
+        self.error = Signal(False)
+
+class MigRdPort(object):
+    def __init__(self, clk, data_width = 32):
+        self.clk = clk
+        self.en = Signal(False)
+        self.data = Signal(intbv(0)[data_width:])
+        self.full = Signal(False)
+        self.empty = Signal(False)
+        self.count = Signal(intbv(0)[7:])
+        self.overflow = Signal(False)
+        self.error = Signal(False)
+
 class Mig(object):
     def __init__(self):
         # Memory data transfer clock period (ps)
@@ -149,6 +182,8 @@ class Mig(object):
 
         self.mcbx_rzq = ''
         self.mcbx_zio = ''
+
+        self.ports = [ [ None, None, None ] for _ in range(6) ]
 
     def gen(self):
         INCLK_PERIOD = ((self.MEMCLK_PERIOD * self.CLKFBOUT_MULT) /
@@ -276,6 +311,24 @@ class Mig(object):
                 syn_clk0_powerup_pll_locked.next = 1
         insts.append(syn_clk0_locked_inst)
 
+        kwargs = {}
+
+        def merge(prefix, dst, src):
+            if src is None:
+                return
+
+            if not isinstance(src, dict):
+                src = vars(src)
+
+            for k, v in src.items():
+                if isinstance(v, SignalType):
+                    dst[prefix + k] = v
+
+        for i, (cmd, wr, rd) in enumerate(self.ports):
+            merge('p%u_cmd_' % i, kwargs, cmd)
+            merge('p%u_wr_' % i, kwargs, wr)
+            merge('p%u_rd_' % i, kwargs, rd)
+
         mcb_ui_inst = mcb_ui_top('mcb_ui_top_inst',
                                  mcbx_dram_clk = self.mcbx_dram_clk,
                                  mcbx_dram_clk_n = self.mcbx_dram_clk_n,
@@ -343,6 +396,7 @@ class Mig(object):
                                  C_MEM_DDR2_3_PA_SR     = "FULL",
                                  C_SKIP_IN_TERM_CAL     = 1,
 
+                                 **kwargs
                                  )
         insts.append(mcb_ui_inst)
 
@@ -355,6 +409,13 @@ def main():
     from myhdl import toVerilog
 
     mig = Mig()
+
+    clk = Signal(False)
+
+    cmd = MigCmdPort(clk)
+    wr = MigWrPort(clk)
+    rd = MigRdPort(clk)
+    mig.ports[0] = [ cmd, wr, rd ]
 
     toVerilog(gen, mig)
 

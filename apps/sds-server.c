@@ -249,6 +249,186 @@ int main(int argc, char *argv[])
 	    for (i = 0; i < count; i++)
 		printf("0x%08x\n", (unsigned)soc[addr+i]);
 	}
+	else if (!strcasecmp(start, "write_ddr"))
+	{
+	    uint32_t addr;
+	    unsigned i, n;
+            volatile uint32_t v;
+
+	    start = tok(&p);
+	    if (!*start)
+	    {
+		printf("error: write_ddr needs an address\n");
+		goto err;
+	    }
+
+	    addr = strtoul(start, &end, 0);
+	    if (*end)
+	    {
+		printf("error: invalid address \"%s\"\n", start);
+		goto err;
+	    }
+
+            while (1)
+            {
+                uint32_t buf[64];
+
+                v = soc[0x201];
+                if (!((v >> 4) & 1))
+                {
+                    printf("write fifo not empty, status 0x%08x\n", (unsigned)v);
+                    goto err;
+                }
+
+                for (n = 0; n < 64; n++)
+                {
+                    start = tok(&p);
+                    if (!*start)
+                        break;
+
+                    buf[n] = strtoul(start, &end, 0);
+
+                    if (*end)
+                    {
+                        printf("error: invalid value \"%s\"\n", start);
+                        goto err;
+                    }
+                }
+
+                if (!n)
+                    break;
+
+                /* There seems to be a write buffer in the CPU which
+                 * merges writes to the same adress.  There is a CP15
+                 * call which can be used to flush this buffer but
+                 * userspace code is not allowed to call it.  Use a
+                 * usleep to wait for the writes to reach the FPGA.
+                 * This stuff ought to be moved to the kernel so that
+                 * we can do proper flushes instead. */
+                for (i = 0; i < n; i++)
+                {
+                    soc[0x210] = buf[i]; /* fill FIFO */
+                    usleep(10000);       /* need this to defeat the write buffer */
+                }
+
+                for (i = 10000; i; i--)
+                {
+                    v = soc[0x201];
+                    if (((v >> 8) & 0x7f) == n)
+                        break;
+                }
+                if (!i)
+                {
+                    printf("write fifo timeout, status 0x%08x\n", (unsigned)v);
+                    fprintf(stderr, "counts 0x%08x\n", (unsigned)soc[0x202]);
+                    goto err;
+                }
+
+                soc[0x200] = addr | ((n-1)<<24) | (0<<30); /* write */
+
+                for (i = 10000; i; i--)
+                {
+                    v = soc[0x201];
+                    if (((v >> 4) & 1))
+                        break;
+                }
+                if (!i)
+                {
+                    printf("write timeout, status 0x%08x\n", (unsigned)v);
+                    goto err;
+                }
+
+                if (((v >> 7) & 1))
+                {
+                    printf("write underrun, status 0x%08x\n", (unsigned)v);
+                    goto err;
+                }
+
+                addr += n;
+	    }
+	}
+	else if (!strcasecmp(start, "read_ddr"))
+	{
+	    uint32_t addr;
+	    unsigned count;
+	    unsigned n, i;
+            uint32_t v;
+
+	    start = tok(&p);
+	    if (!*start)
+	    {
+		printf("error: read_ddr needs an address\n");
+		goto err;
+	    }
+
+	    addr = strtoul(start, &end, 0);
+	    if (*end)
+	    {
+		printf("error: invalid address \"%s\"\n", start);
+		goto err;
+	    }
+
+	    start = tok(&p);
+	    if (!*start)
+		count =1;
+	    else
+	    {
+		count = strtoul(start, &end, 0);
+		if (*end || count > ARRAY_SIZE(buf))
+		{
+		    printf("error: invalid count \"%s\"\n", start);
+		    goto err;
+		}
+	    }
+
+            while (count)
+            {
+                n = count;
+                if (n > 32)
+                    n = 32;
+
+                v = soc[0x201];
+                if (!((v >> 15) & 1))
+                {
+                    printf("read fifo not empty, status 0x%08x\n", (unsigned)v);
+                    goto err;
+                }
+
+                v = addr | ((n-1)<<24) | (1<<30); /* read */
+                fprintf(stderr, "0x200 <- 0x%08x\n", (unsigned)v);
+                soc[0x200] = v;
+
+                for (i = 10000; i; i--)
+                {
+                    v = soc[0x201];
+
+                    if (((v >> 19) & 0x7f) == n)
+                        break;
+                }
+                if (!i)
+                {
+                    printf("read timeout, status 0x%08x\n", (unsigned)v);
+                    goto err;
+                }
+
+                /* empty FIFO */
+                for (i = 0; i < n; i++)
+                {
+                    volatile uint32_t t = soc[0x211];
+                    printf("0x%08x\n", (unsigned)t);
+                }
+
+                addr += n;
+                count -= n;
+            }
+
+            v = soc[0x201];
+            if (!((v >> 15) & 1))
+            {
+                printf("read fifo not empty after, status 0x%08x\n", (unsigned)v);
+                goto err;
+            }
+	}
 	else if (!strcasecmp(start, "set_gpio"))
 	{
 	    unsigned pin;

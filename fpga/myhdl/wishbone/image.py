@@ -23,11 +23,12 @@ from simplebus import SimpleMux, SimpleAlgo, SimpleRam
 from sampler import Sampler
 from shifter import Shifter, ShifterBus
 from ram import Ram
-from mig import Mig, mig_with_tb
+from mig import Mig, MigCmdPort, MigWrPort, MigRdPort, mig_with_tb
 from frontpanel import FrontPanel
 
 from simplebus import SimpleReg
 from simplebus import RwField as SimpleRwField
+from simplebus import RoField as SimpleRoField
 
 def top(din, init_b, cclk,
         ref_clk,
@@ -74,27 +75,59 @@ def top(din, init_b, cclk,
     insts.append(slave_sdioinst)
 
     ####################################################################
-    # DDR memory
+    # A MUX and some test code for it
 
-    # The DDR memory controller uses the SoC clk as the input to its
-    # PLL.  It also generates soc_clk.
     soc_clk = Signal(False)
     soc_clk._name = 'soc_clk' # Must match name of timing spec in ucf file
     soc_clk_b = Signal(False)
     soc_clk_b._name = 'soc_clk_b' # Must match name of timing spec in ucf file
 
+    # MyHDL won't create a declaration of soc_clk, try to force it
+    soc_clk_tmp = Signal(False)
+    @always_comb
+    def soc_clk_tmp_inst():
+        soc_clk_tmp.next = soc_clk
+    insts.append(soc_clk_tmp_inst)
+
+    soc_system = System(soc_clk_tmp, None)
+
+    sm = SimpleMux(soc_system)
+
+    if 1:
+        # Some RAM
+        sr = SimpleRam(soc_system, 1024, 32)
+        sr_inst = sr.gen()
+        insts.append(sr_inst)
+        sm.add(sr.bus(), addr = 0x8000)
+
+    if 1:
+        # A read only area which returns predictable patterns
+        sa = SimpleAlgo(soc_system, (1<<16), 32)
+        sa_inst = sa.gen()
+        insts.append(sa_inst)
+        sm.add(sa.bus(), 0x10000)
+
+    ####################################################################
+    # DDR memory
+
+    # The DDR memory controller uses the SoC clock pins as the input
+    # to its PLL.  It also generates soc_clk which is used above
+
     dram_rst = ResetSignal(val = False, active = True, async = True)
     dram_calib_done = Signal(False)
-    dram_error = Signal(False)
-
-    dram_ctl = RegFile('dram_ctl', "DRAM control", [
-        RwField(spi_system, 'dram_rst_i', "Reset", dram_rst),
-        RoField(spi_system, 'dram_calib_done', "Calib flag", dram_calib_done),
-#        RoField(spi_system, 'dram_error', "Error flag", dram_error),
-        ])
-    mux.add(dram_ctl, 0x250)
 
     if 0:
+        # This uses the MIG test bench created by the core generator
+
+        dram_error = Signal(False)
+
+        dram_ctl = RegFile('dram_ctl', "DRAM control", [
+            RwField(spi_system, 'dram_rst_i', "Reset", dram_rst),
+            RoField(spi_system, 'dram_calib_done', "Calib flag", dram_calib_done),
+#        RoField(spi_system, 'dram_error', "Error flag", dram_error),
+            ])
+        mux.add(dram_ctl, 0x250)
+
         dram_clk_p = soc_clk_p
         dram_clk_n = soc_clk_n
 
@@ -120,8 +153,12 @@ def top(din, init_b, cclk,
         mig = Mig()
         mig.rst = dram_rst
         mig.clkin = soc_clk_ibuf
-        mig.soc_clk = soc_clk
-        mig.soc_clk_b = soc_clk_b
+
+        @always_comb
+        def mig_soc_clk_inst():
+            soc_clk.next = mig.soc_clk
+            soc_clk_b.next = mig.soc_clk_b
+        insts.append(mig_soc_clk_inst)
 
         mig.calib_done = dram_calib_done
 
@@ -140,129 +177,143 @@ def top(din, init_b, cclk,
         mig.mcbx_dram_udm = mcb3_dram_udm
         mig.mcbx_dram_ldm = mcb3_dram_dm
 
-        mig_inst = mig.gen()
-        insts.append(mig_inst)
-
     ####################################################################
-    # A MUX and some test code for it
-
-    soc_system = System(soc_clk, None)
-
-    sm = SimpleMux(soc_system)
+    # DRAM regs on the SoC Bus
 
     if 1:
-        # Some RAM
-        sr = SimpleRam(soc_system, 1024, 32)
-        sr_inst = sr.gen()
-        insts.append(sr_inst)
-        sm.add(sr.bus(), addr = 0x8000)
+        mig_cmd = MigCmdPort(soc_system.CLK)
+        mig_wr = MigWrPort(soc_system.CLK)
+        mig_rd = MigRdPort(soc_system.CLK)
 
-    if 1:
-        # A read only area which returns predictable patterns
-        sa = SimpleAlgo(soc_system, (1<<16), 32)
-        sa_inst = sa.gen()
-        insts.append(sa_inst)
-        sm.add(sa.bus(), 0x10000)
+        mig_cmd_addr = Signal(intbv(0)[24:])
+        mig_cmd_instr = Signal(intbv(0)[2:])
+
+        dram_cmd = SimpleReg(soc_system, 'dram_cmd', "DRAM cmd", [
+            SimpleRwField('addr', "", mig_cmd_addr),
+            SimpleRwField('bl', "", mig_cmd.bl),
+            SimpleRwField('instr', "", mig_cmd_instr),
+            ])
+        sm.add(dram_cmd.bus(), addr = 0x200)
+        insts.append(dram_cmd.gen())
+
+        dram_cmd_bus = dram_cmd.bus()
+
+        @always_seq(soc_clk.posedge, soc_system.RST)
+        def mig_cmd_seq():
+            mig_cmd.en.next = dram_cmd_bus.WR
+        insts.append(mig_cmd_seq)
+
+        @always_comb
+        def dram_cmd_comb():
+            mig_cmd.byte_addr.next = mig_cmd_addr << 2
+            mig_cmd.instr.next = mig_cmd_instr
+        insts.append(dram_cmd_comb)
+
+        dram_ctrl = SimpleReg(soc_system, 'dram_ctrl', "DRAM ctrl", [
+            SimpleRwField('reset', "Reset", dram_rst),
+            SimpleRoField('calib_done', "Calib Done", dram_calib_done),
+            SimpleRoField('cmd_empty', "", mig_cmd.empty),
+            SimpleRoField('cmd_full', "", mig_cmd.full),
+            SimpleRoField('wr_empty', "", mig_wr.empty),
+            SimpleRoField('wr_full', "", mig_wr.full),
+            SimpleRoField('wr_error', "", mig_wr.error),
+            SimpleRoField('wr_underrun', "", mig_wr.underrun),
+            SimpleRoField('wr_count', "", mig_wr.count),
+            SimpleRoField('rd_empty', "", mig_rd.empty),
+            SimpleRoField('rd_full', "", mig_rd.full),
+            SimpleRoField('rd_error', "", mig_rd.error),
+            SimpleRoField('rd_overflow', "", mig_rd.overflow),
+            SimpleRoField('rd_count', "", mig_rd.count),
+            ])
+        sm.add(dram_ctrl.bus(), addr = 0x201)
+        insts.append(dram_ctrl.gen())
+
+        dram_wr = SimpleReg(soc_system, 'dram_wr', "DRAM write", [
+            SimpleRwField('wr', "", mig_wr.data)
+            ])
+        sm.add(dram_wr.bus(), addr = 0x210)
+        insts.append(dram_wr.gen())
+
+        dram_wr_bus = dram_wr.bus()
+        @always_seq(soc_clk.posedge, soc_system.RST)
+        def mig_wr_seq():
+            mig_wr.en.next = dram_wr_bus.WR
+            mig_wr.mask.next = 0
+        insts.append(mig_wr_seq)
+
+        dram_rd = SimpleReg(soc_system, 'dram_rd', "DRAM read", [
+            SimpleRoField('rd', "", mig_rd.data)
+            ])
+        sm.add(dram_rd.bus(), addr = 0x211)
+        insts.append(dram_rd.gen())
+
+        dram_rd_bus = dram_rd.bus()
+        @always_seq(soc_clk.posedge, soc_system.RST)
+        def mig_rd_seq():
+            mig_rd.en.next = dram_rd_bus.RD
+        insts.append(mig_rd_seq)
+
+        dram_rd_count = Signal(intbv(0)[16:])
+        dram_wr_count = Signal(intbv(0)[16:])
+
+        dram_counts = SimpleReg(soc_system, 'dram_counts', "DRAM counts", [
+            SimpleRoField('rd_count', "", dram_rd_count),
+            SimpleRoField('wr_count', "", dram_wr_count),
+            ])
+        sm.add(dram_counts.bus(), addr = 0x202)
+        insts.append(dram_counts.gen())
+
+        @always_seq(soc_system.CLK.posedge, soc_system.RST)
+        def dram_counts_seq():
+            if dram_rst:
+                dram_rd_count.next = 0
+                dram_wr_count.next = 0
+            else:
+                if mig_rd.en:
+                    dram_rd_count.next = dram_rd_count + 1
+                if mig_wr.en:
+                    dram_wr_count.next = dram_wr_count + 1
+        insts.append(dram_counts_seq)
+
+        mig.ports[0] = mig_cmd, mig_wr, mig_rd
+
+    mig_inst = mig.gen()
+    insts.append(mig_inst)
 
     ####################################################################
     # Front panel attached to the SoC bus
 
-    frontpanel = FrontPanel(soc_system, fp_rst, fp_clk, fp_din)
-    frontpanel_inst = frontpanel.gen()
-    insts.append(frontpanel_inst)
+    if 1:
+        frontpanel = FrontPanel(soc_system, fp_rst, fp_clk, fp_din)
+        frontpanel_inst = frontpanel.gen()
+        insts.append(frontpanel_inst)
 
-    # These need to be spaced a bit apart, otherwise burst will make
-    # us read from the data_bus register when we only want to read the
-    # ctl_bus register.
-    sm.add(frontpanel.ctl_bus, addr = 0x100)
-    sm.add(frontpanel.data_bus, addr = 0x104)
+        # These need to be spaced a bit apart, otherwise burst will make
+        # us read from the data_bus register when we only want to read the
+        # ctl_bus register.
+        sm.add(frontpanel.ctl_bus, addr = 0x100)
+        sm.add(frontpanel.data_bus, addr = 0x104)
 
     ####################################################################
     # LEDs on the front panel
 
-    led_green_tmp = Signal(False)
-    led_white_tmp = Signal(False)
-
-    misc_reg = SimpleReg(soc_system, 'misc', "Miscellaneous", [
-        SimpleRwField('green', "Green LED", led_green_tmp),
-        SimpleRwField('white', "White LED", led_white_tmp),
-        ])
-
-    sm.add(misc_reg.bus(), addr = 0x108)
-    insts.append(misc_reg.gen())
-
-    @always_comb
-    def led_inst():
-        led_green.next = led_green_tmp
-        led_white.next = led_white_tmp
-    insts.append(led_inst)
-
-    ####################################################################
-    # SoC bus
-
-    # First finish the MUX
-    sm.addr_depth = 32 * 1024 * 1024
-    sm_inst = sm.gen()
-    insts.append(sm_inst)
-    simple_bus = sm.bus()
-
-    soc_bus = DdrBus(2, 12, 2)
-
-    # And attach the MUX bus to the SoC bus
-    soc_ddr = Ddr()
-    soc_inst = soc_ddr.gen(soc_system, soc_bus, simple_bus)
-    insts.append(soc_inst)
-
-    soc_connect_inst = ddr_connect(
-        soc_bus, soc_clk, soc_clk_b, None,
-        soc_cs, soc_ras, soc_cas, soc_we, soc_ba, soc_a,
-        soc_dqs, soc_dm, soc_dq)
-    insts.append(soc_connect_inst)
-
     if 1:
+        led_green_tmp = Signal(False)
+        led_white_tmp = Signal(False)
 
-        soc_capture = Signal(False)
-        soc_ctl = RegFile('soc_ctl', "SOC control", [
-            RwField(spi_system, 'soc_capture', "Capture samples", soc_capture),
+        misc_reg = SimpleReg(soc_system, 'misc', "Miscellaneous", [
+            SimpleRwField('green', "Green LED", led_green_tmp),
+            SimpleRwField('white', "White LED", led_white_tmp),
             ])
-        mux.add(soc_ctl, 0x231)
-        soc_capture_sync = Signal(False)
-        soc_capture_sync_inst = syncro(soc_clk, soc_capture, soc_capture_sync)
-        insts.append(soc_capture_sync_inst)
 
-        soc_sdr = ConcatSignal(
-            soc_a, soc_ba, soc_we, soc_cas, soc_ras, soc_cs)
+        sm.add(misc_reg.bus(), addr = 0x108)
+        insts.append(misc_reg.gen())
 
-        soc_sdr_sampler = Sampler(addr_depth = 0x800,
-                                  sample_clk = soc_clk,
-                                  sample_data = soc_sdr,
-                                  sample_enable = soc_capture_sync)
-        mux.add(soc_sdr_sampler, 0x2000)
-
-        soc_reg = ConcatSignal(
-            soc_bus.A, soc_bus.BA,
-            soc_bus.WE_B, soc_bus.CAS_B, soc_bus.RAS_B, soc_bus.CS_B)
-
-        soc_reg_sampler = Sampler(addr_depth = 0x800,
-                                   sample_clk = soc_clk,
-                                   sample_data = soc_reg,
-                                   sample_enable = soc_capture_sync)
-        mux.add(soc_reg_sampler, 0x2800)
-
-        soc_ddr_0 = ConcatSignal(soc_bus.DQ1_OE, soc_bus.DQS1_O, soc_bus.DQS1_OE, soc_bus.DQ0_I, soc_bus.DM0_I, soc_bus.DQS0_I)
-        soc_ddr_1 = ConcatSignal(soc_bus.DQ0_OE, soc_bus.DQS0_O, soc_bus.DQS0_OE, soc_bus.DQ1_I, soc_bus.DM1_I, soc_bus.DQS1_I)
-
-        soc_ddr_sampler_0 = Sampler(addr_depth = 0x800,
-                                    sample_clk = soc_clk,
-                                    sample_data = soc_ddr_0,
-                                    sample_enable = soc_capture_sync)
-        mux.add(soc_ddr_sampler_0, 0x3000)
-
-        soc_ddr_sampler_1 = Sampler(addr_depth = 0x800,
-                                    sample_clk = soc_clk,
-                                    sample_data = soc_ddr_1,
-                                    sample_enable = soc_capture_sync)
-        mux.add(soc_ddr_sampler_1, 0x3800)
+        @always_comb
+        def led_inst():
+            led_green.next = led_green_tmp
+            led_white.next = led_white_tmp
+        insts.append(led_inst)
 
     ####################################################################
     # ADC bus
@@ -407,6 +458,73 @@ def top(din, init_b, cclk,
         probe_comp.next = probe_comp_int
         ext_trig_out.next = probe_comp_int
     insts.append(probe_comp_comb)
+
+    ####################################################################
+    # SoC bus
+
+    # First finish the MUX
+    sm.addr_depth = 32 * 1024 * 1024
+    sm_inst = sm.gen()
+    insts.append(sm_inst)
+    simple_bus = sm.bus()
+
+    soc_bus = DdrBus(2, 12, 2)
+
+    # And attach the MUX bus to the SoC bus
+    soc_ddr = Ddr()
+    soc_inst = soc_ddr.gen(soc_system, soc_bus, simple_bus)
+    insts.append(soc_inst)
+
+    soc_connect_inst = ddr_connect(
+        soc_bus, soc_clk, soc_clk_b, None,
+        soc_cs, soc_ras, soc_cas, soc_we, soc_ba, soc_a,
+        soc_dqs, soc_dm, soc_dq)
+    insts.append(soc_connect_inst)
+
+    if 1:
+
+        soc_capture = Signal(False)
+        soc_ctl = RegFile('soc_ctl', "SOC control", [
+            RwField(spi_system, 'soc_capture', "Capture samples", soc_capture),
+            ])
+        mux.add(soc_ctl, 0x231)
+        soc_capture_sync = Signal(False)
+        soc_capture_sync_inst = syncro(soc_clk, soc_capture, soc_capture_sync)
+        insts.append(soc_capture_sync_inst)
+
+        soc_sdr = ConcatSignal(
+            soc_a, soc_ba, soc_we, soc_cas, soc_ras, soc_cs)
+
+        soc_sdr_sampler = Sampler(addr_depth = 0x800,
+                                  sample_clk = soc_clk,
+                                  sample_data = soc_sdr,
+                                  sample_enable = soc_capture_sync)
+        mux.add(soc_sdr_sampler, 0x2000)
+
+        soc_reg = ConcatSignal(
+            soc_bus.A, soc_bus.BA,
+            soc_bus.WE_B, soc_bus.CAS_B, soc_bus.RAS_B, soc_bus.CS_B)
+
+        soc_reg_sampler = Sampler(addr_depth = 0x800,
+                                   sample_clk = soc_clk,
+                                   sample_data = soc_reg,
+                                   sample_enable = soc_capture_sync)
+        mux.add(soc_reg_sampler, 0x2800)
+
+        soc_ddr_0 = ConcatSignal(soc_bus.DQ1_OE, soc_bus.DQS1_O, soc_bus.DQS1_OE, soc_bus.DQ0_I, soc_bus.DM0_I, soc_bus.DQS0_I)
+        soc_ddr_1 = ConcatSignal(soc_bus.DQ0_OE, soc_bus.DQS0_O, soc_bus.DQS0_OE, soc_bus.DQ1_I, soc_bus.DM1_I, soc_bus.DQS1_I)
+
+        soc_ddr_sampler_0 = Sampler(addr_depth = 0x800,
+                                    sample_clk = soc_clk,
+                                    sample_data = soc_ddr_0,
+                                    sample_enable = soc_capture_sync)
+        mux.add(soc_ddr_sampler_0, 0x3000)
+
+        soc_ddr_sampler_1 = Sampler(addr_depth = 0x800,
+                                    sample_clk = soc_clk,
+                                    sample_data = soc_ddr_1,
+                                    sample_enable = soc_capture_sync)
+        mux.add(soc_ddr_sampler_1, 0x3800)
 
     ####################################################################
     # Random stuff

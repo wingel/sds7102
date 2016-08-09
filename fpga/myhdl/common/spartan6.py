@@ -3,7 +3,7 @@ import hacking
 if __name__ == '__main__':
     hacking.reexec_if_needed('spartan6.py')
 
-from myhdl import Signal, SignalType, instance, always_comb, intbv
+from myhdl import Signal, SignalType, instance, always_comb, intbv, always
 
 use_xilinx = 1
 
@@ -92,6 +92,8 @@ BUFG $name (
 '''.strip()
 
 def bufgce(name, i, o, ce):
+    i.read = True
+    ce.read = True
     o.driven = 'wire'
 
     @always_comb
@@ -366,10 +368,11 @@ def iddr2_int(name, d, q0, q1, c0, c1, ce = _one, r = _zero, s = _zero,
     iname = name + '_block'
     n = len(d)
 
+    # Silly stuff to convince MyHDL that the signal is used
     @always_comb
     def comb():
-        q0.next = d
-        q1.next = d
+        q0.next = d and c0 and ce and r and s
+        q1.next = d and c1 and ce and r and s
 
     return comb
 
@@ -850,76 +853,21 @@ def pll_adv(
 
     insts = []
 
-    if isinstance(rst, SignalType):
-        rst.read = True
+    for s in [ rst, clkinsel, clkin1, clkin2, clkfbin ]:
+        if isinstance(s, SignalType):
+            s.read = True
 
-    if isinstance(clkinsel, SignalType):
-        clkinsel.read = True
+    for s in [ clkfbdcm, clkfbout,
+               clkoutdcm0, clkoutdcm1, clkoutdcm2, clkoutdcm3, clkoutdcm4, clkoutdcm5,
+               clkout0, clkout1, clkout2, clkout3, clkout4, clkout5,
+               locked ]:
+        if isinstance(s, SignalType):
+            s.driven = 'wire'
 
-    if isinstance(clkin1, SignalType):
-        clkin1.read = True
-
-    if isinstance(clkin2, SignalType):
-        clkin2.read = True
-
-    if isinstance(clkfbin, SignalType):
-        clkfbin.read = True
-
-    if isinstance(clkfbdcm, SignalType):
-        clkfbdcm.driven = 'wire'
-        @always_comb
-        def clkfbdcm_inst():
-            clkfbdcm.next = clkin1
-        insts.append(clkfbdcm_inst)
-
-    if isinstance(clkfbout, SignalType):
-        clkfbout.driven = 'wire'
-        @always_comb
-        def clkfbout_inst():
-            clkfbout.next = clkin1
-        insts.append(clkfbout_inst)
-
-    if isinstance(clkout0, SignalType):
-        clkout0.driven = 'wire'
-        @always_comb
-        def clkout0_inst():
-            clkout0.next = clkin1
-        insts.append(clkout0_inst)
-
-    if isinstance(clkout1, SignalType):
-        clkout1.driven = 'wire'
-        @always_comb
-        def clkout1_inst():
-            clkout1.next = clkin1
-        insts.append(clkout1_inst)
-
-    if isinstance(clkout2, SignalType):
-        clkout2.driven = 'wire'
-        @always_comb
-        def clkout2_inst():
-            clkout2.next = clkin1
-        insts.append(clkout2_inst)
-
-    if isinstance(clkout3, SignalType):
-        clkout3.driven = 'wire'
-        @always_comb
-        def clkout3_inst():
-            clkout3.next = clkin1
-        insts.append(clkout3_inst)
-
-    if isinstance(clkout4, SignalType):
-        clkout4.driven = 'wire'
-        @always_comb
-        def clkout4_inst():
-            clkout4.next = clkin1
-        insts.append(clkout4_inst)
-
-    if isinstance(clkout5, SignalType):
-        clkout5.driven = 'wire'
-        @always_comb
-        def clkout5_inst():
-            clkout5.next = clkin1
-        insts.append(clkout5_inst)
+            @always_comb
+            def inst():
+                s.next = clkin1 or clkfbin
+            insts.append(inst)
 
     return insts
 
@@ -1373,20 +1321,37 @@ def mcb_ui_top(
     mcbx_dram_dq.read = True
     mcbx_dram_dq.driven = 'wire'
 
-    if isinstance(sys_rst, SignalType):
-        sys_rst.read = True
-    elif sys_rst is None:
+    if sys_rst is None:
         sys_rst = 0
 
-    ui_clk.read = True
-    sysclk_2x.read = True
-    sysclk_2x_180.read = True
-    pll_ce_0.read = True
-    pll_ce_90.read = True
-    pll_lock.read = True
+    for s in [ sys_rst, ui_clk, sysclk_2x, sysclk_2x_180,
+               pll_ce_0, pll_ce_90, pll_lock ]:
+        if isinstance(s, SignalType):
+            s.read = True
 
-    if isinstance(uo_done_cal, SignalType):
-        uo_done_cal.driven = 'wire'
+    for s in [ p0_cmd_empty, p0_cmd_full,
+               p0_wr_empty, p0_wr_full, p0_wr_error, p0_wr_underrun, p0_wr_count,
+               p0_rd_empty, p0_rd_full, p0_rd_error, p0_rd_overflow, p0_rd_count, p0_rd_data,
+               p1_cmd_empty, p1_cmd_full,
+               p1_wr_empty, p1_wr_full, p1_wr_error, p1_wr_underrun, p1_wr_count,
+               p1_rd_empty, p1_rd_full, p1_rd_error, p1_rd_overflow, p1_rd_count, p1_rd_data,
+               p2_cmd_empty, p2_cmd_full,
+               p2_wr_empty, p2_wr_full, p2_wr_error, p2_wr_underrun, p2_wr_count,
+               p2_rd_empty, p2_rd_full, p2_rd_error, p2_rd_overflow, p2_rd_count, p2_rd_data,
+               p3_cmd_empty, p3_cmd_full,
+               p3_wr_empty, p3_wr_full, p3_wr_error, p3_wr_underrun, p3_wr_count,
+               p3_rd_empty, p3_rd_full, p3_rd_error, p3_rd_overflow, p3_rd_count, p3_rd_data,
+               p4_cmd_empty, p4_cmd_full,
+               p4_wr_empty, p4_wr_full, p4_wr_error, p4_wr_underrun, p4_wr_count,
+               p4_rd_empty, p4_rd_full, p4_rd_error, p4_rd_overflow, p4_rd_count, p4_rd_data,
+               p5_cmd_empty, p5_cmd_full,
+               p5_wr_empty, p5_wr_full, p5_wr_error, p5_wr_underrun, p5_wr_count,
+               p5_rd_empty, p5_rd_full, p5_rd_error, p5_rd_overflow, p5_rd_count, p5_rd_data,
+
+               uo_done_cal
+               ]:
+        if isinstance(s, SignalType):
+            s.driven = 'wire'
 
     C_MC_CALIBRATION_CLK_DIV  = 1
 
@@ -1400,11 +1365,21 @@ def mcb_ui_top(
 
     C_MCB_USE_EXTERNAL_BUFPLL = 1
 
-    @always_comb
-    def comb():
-        status.next = not sys_rst
+    insts = []
 
-    return comb
+    if isinstance(status, SignalType):
+        @always (sysclk_2x.posedge)
+        def inst():
+            status.next = not sys_rst
+        insts.append(inst)
+
+    if isinstance(uo_done_cal, SignalType):
+        @always (sysclk_2x_180.posedge)
+        def inst():
+            uo_done_cal.next = not sys_rst
+        insts.append(inst)
+
+    return insts
 
 mcb_ui_top.verilog_code = '''
 mcb_ui_top #(
@@ -1763,6 +1738,8 @@ def main():
 
         ui_clk = Signal(False)
 
+        uo_done_cal = Signal(False)
+
         toVerilog(mcb_ui_top,
                   'mcb_ui_inst',
 
@@ -1801,6 +1778,8 @@ def main():
                   pll_ce_0,
                   pll_ce_90,
                   pll_lock,
+
+                  uo_done_cal = uo_done_cal
                   )
 
         print

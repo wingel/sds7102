@@ -103,38 +103,34 @@ example_top #(
 );
 '''
 
-class MigCmdPort(object):
-    def __init__(self, clk):
-        self.clk = clk
-        self.en = Signal(False)
-        self.instr = Signal(intbv(0)[3:])
-        self.bl = Signal(intbv(0)[6:])
-        self.byte_addr = Signal(intbv(0)[29:])
-        self.empty = Signal(False)
-        self.full = Signal(False)
-
-class MigWrPort(object):
+class MigPort(object):
     def __init__(self, clk, data_width = 32):
-        self.clk = clk
-        self.en = Signal(False)
-        self.mask = Signal(intbv(0)[data_width/8:])
-        self.data = Signal(intbv(0)[data_width:])
-        self.full = Signal(False)
-        self.empty = Signal(False)
-        self.count = Signal(intbv(0)[7:])
-        self.underrun = Signal(False)
-        self.error = Signal(False)
+        self.cmd_clk = clk
+        self.cmd_en = Signal(False)
+        self.cmd_instr = Signal(intbv(0)[3:])
+        self.cmd_bl = Signal(intbv(0)[6:])
+        self.cmd_byte_addr = Signal(intbv(0)[29:])
+        self.cmd_empty = Signal(False)
+        self.cmd_full = Signal(False)
 
-class MigRdPort(object):
-    def __init__(self, clk, data_width = 32):
-        self.clk = clk
-        self.en = Signal(False)
-        self.data = Signal(intbv(0)[data_width:])
-        self.full = Signal(False)
-        self.empty = Signal(False)
-        self.count = Signal(intbv(0)[7:])
-        self.overflow = Signal(False)
-        self.error = Signal(False)
+        self.wr_clk = clk
+        self.wr_en = Signal(False)
+        self.wr_mask = Signal(intbv(0)[data_width/8:])
+        self.wr_data = Signal(intbv(0)[data_width:])
+        self.wr_full = Signal(False)
+        self.wr_empty = Signal(False)
+        self.wr_count = Signal(intbv(0)[7:])
+        self.wr_underrun = Signal(False)
+        self.wr_error = Signal(False)
+
+        self.rd_clk = clk
+        self.rd_en = Signal(False)
+        self.rd_data = Signal(intbv(0)[data_width:])
+        self.rd_full = Signal(False)
+        self.rd_empty = Signal(False)
+        self.rd_count = Signal(intbv(0)[7:])
+        self.rd_overflow = Signal(False)
+        self.rd_error = Signal(False)
 
 class Mig(object):
     def __init__(self):
@@ -183,7 +179,7 @@ class Mig(object):
         self.mcbx_rzq = ''
         self.mcbx_zio = ''
 
-        self.ports = [ [ None, None, None ] for _ in range(6) ]
+        self.ports = [ None for _ in range(6) ]
 
     def gen(self):
         INCLK_PERIOD = ((self.MEMCLK_PERIOD * self.CLKFBOUT_MULT) /
@@ -324,10 +320,8 @@ class Mig(object):
                 if isinstance(v, SignalType):
                     dst[prefix + k] = v
 
-        for i, (cmd, wr, rd) in enumerate(self.ports):
-            merge('p%u_cmd_' % i, kwargs, cmd)
-            merge('p%u_wr_' % i, kwargs, wr)
-            merge('p%u_rd_' % i, kwargs, rd)
+        for i, port in enumerate(self.ports):
+            merge('p%u_' % i, kwargs, port)
 
         mcb_ui_inst = mcb_ui_top('mcb_ui_top_inst',
                                  mcbx_dram_clk = self.mcbx_dram_clk,
@@ -366,23 +360,23 @@ class Mig(object):
                                  C_CALIB_SOFT_IP	= "FALSE",
                                  C_MEM_ADDR_ORDER       = "ROW_BANK_COLUMN",
 
-                                 C_PORT_ENABLE          = "6'b001111",
-                                 C_PORT_CONFIG          =  "B32_B32_B32_B32",
+                                 C_PORT_ENABLE          = "6'b111111",
+                                 C_PORT_CONFIG          =  "B32_B32_W32_W32_W32_R32",
 
                                  C_ARB_ALGORITHM        = 0,
                                  C_ARB_NUM_TIME_SLOTS   = 12,
-                                 C_ARB_TIME_SLOT_0      = "12'o0123",
-                                 C_ARB_TIME_SLOT_1      = "12'o1230",
-                                 C_ARB_TIME_SLOT_2      = "12'o2301",
-                                 C_ARB_TIME_SLOT_3      = "12'o3012",
-                                 C_ARB_TIME_SLOT_4      = "12'o0123",
-                                 C_ARB_TIME_SLOT_5      = "12'o1230",
-                                 C_ARB_TIME_SLOT_6      = "12'o2301",
-                                 C_ARB_TIME_SLOT_7      = "12'o3012",
-                                 C_ARB_TIME_SLOT_8      = "12'o0123",
-                                 C_ARB_TIME_SLOT_9      = "12'o1230",
-                                 C_ARB_TIME_SLOT_10     = "12'o2301",
-                                 C_ARB_TIME_SLOT_11     = "12'o3012",
+                                 C_ARB_TIME_SLOT_0      = "18'o012345",
+                                 C_ARB_TIME_SLOT_1      = "18'o123450",
+                                 C_ARB_TIME_SLOT_2      = "18'o234501",
+                                 C_ARB_TIME_SLOT_3      = "18'o345012",
+                                 C_ARB_TIME_SLOT_4      = "18'o450123",
+                                 C_ARB_TIME_SLOT_5      = "18'o501234",
+                                 C_ARB_TIME_SLOT_6      = "18'o012345",
+                                 C_ARB_TIME_SLOT_7      = "18'o123450",
+                                 C_ARB_TIME_SLOT_8      = "18'o234501",
+                                 C_ARB_TIME_SLOT_9      = "18'o345012",
+                                 C_ARB_TIME_SLOT_10     = "18'o450123",
+                                 C_ARB_TIME_SLOT_11     = "18'o501234",
 
                                  C_NUM_DQ_PINS = 16,
                                  C_MEM_ADDR_WIDTH = 13,

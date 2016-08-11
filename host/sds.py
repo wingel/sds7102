@@ -259,20 +259,18 @@ class SDS(object):
 
 def decode_mig_status(v):
     print "dram status  0x%08x" % v
-    print "reset        %u" % ((v >> 0) & 1)
-    print "calib_done   %u" % ((v >> 1) & 1)
-    print "cmd_empty    %u" % ((v >> 2) & 1)
-    print "cmd_full     %u" % ((v >> 3) & 1)
-    print "wr_empty     %u" % ((v >> 4) & 1)
-    print "wr_full      %u" % ((v >> 5) & 1)
-    print "wr_error     %u" % ((v >> 6) & 1)
-    print "wr_underrun  %u" % ((v >> 7) & 1)
-    print "wr_count     %u" % ((v >> 8) & 0x7f)
-    print "rd_empty     %u" % ((v >> 15) & 1)
-    print "rd_full      %u" % ((v >> 16) & 1)
-    print "rd_error     %u" % ((v >> 17) & 1)
-    print "rd_overflow  %u" % ((v >> 18) & 1)
-    print "rd_count     %u" % ((v >> 19) & 0x7f)
+    print "cmd_full     %u" % ((v >> 25) & 1)
+    print "cmd_empty    %u" % ((v >> 24) & 1)
+    print "wr_underrun  %u" % ((v >> 23) & 1)
+    print "wr_error     %u" % ((v >> 22) & 1)
+    print "wr_full      %u" % ((v >> 21) & 1)
+    print "wr_empty     %u" % ((v >> 20) & 1)
+    print "wr_count     %u" % ((v >> 12) & 0x7f)
+    print "rd_overflow  %u" % ((v >> 11) & 1)
+    print "rd_error     %u" % ((v >> 10) & 1)
+    print "rd_full      %u" % ((v >> 9) & 1)
+    print "rd_empty     %u" % ((v >> 8) & 1)
+    print "rd_count     %u" % ((v >> 0) & 0x7f)
     print
 
 def main():
@@ -280,49 +278,53 @@ def main():
 
     # sds.capture(16)
 
-    print "counts 0x%08x" % sds.read_soc_reg(0x202)
-
-    sds.write_soc_reg(0x210, 0xbeeffeed)
-    print "0x%08x" % sds.read_soc_reg(0x210)
-    sds.write_soc_reg(0x210, 0xdeadbeef)
-    print "0x%08x" % sds.read_soc_reg(0x210)
-
-    decode_mig_status(sds.read_soc_reg(0x201))
+    if 0:
+        print "counts 0x%08x" % sds.read_soc_reg(0x212)
+        decode_mig_status(sds.read_soc_reg(0x211))
 
     if 1:
-        sds.write_soc_reg(0x201, 1)
-        decode_mig_status(sds.read_soc_reg(0x201))
-        sds.write_soc_reg(0x201, 0)
-        decode_mig_status(sds.read_soc_reg(0x201))
+        print "Reset"
+        sds.write_soc_reg(0x200, 1)
+        print "ctrl 0x%08x" % sds.read_soc_reg(0x200)
+        sds.write_soc_reg(0x200, 0)
+        print "ctrl 0x%08x" % sds.read_soc_reg(0x200)
         time.sleep(0.1)
+        print "ctrl 0x%08x" % sds.read_soc_reg(0x200)
+        print
 
-    decode_mig_status(sds.read_soc_reg(0x201))
+    decode_mig_status(sds.read_soc_reg(0x211))
 
     n = 3
-
+    o = 10
     if 1:
         print "write to FIFO"
         for i in range(n):
-            sds.write_soc_reg(0x210, (0xf00f0000 + i) & 0xffffffff)
-            # a read seems to be needed to flush the write buffer
-            print "back 0x%08x" % sds.read_soc_reg(0x210)
-        decode_mig_status(sds.read_soc_reg(0x201))
-        print "write to DDR"
-        sds.write_soc_reg(0x200, 34 | ((n-1)<<24) | (0<<30))
-        time.sleep(0.1)
-        decode_mig_status(sds.read_soc_reg(0x201))
+            sds.write_soc_reg(0x218, 0xf00f0000 + i)
+            time.sleep(0.1)
+        print "counts 0x%08x" % sds.read_soc_reg(0x212)
+        decode_mig_status(sds.read_soc_reg(0x211))
 
-    n = 32
+        print "write to DDR"
+        sds.write_soc_reg(0x210, o | ((n-1)<<24) | (0<<30))
+        time.sleep(0.1)
+        print "counts 0x%08x" % sds.read_soc_reg(0x212)
+        decode_mig_status(sds.read_soc_reg(0x211))
+
+    n = 31
+    o = 0
     if 1:
         print "read from DDR"
-        sds.write_soc_reg(0x200, 32 | ((n-1)<<24) | (1<<30))
+        sds.write_soc_reg(0x210, o | ((n-1)<<24) | (1<<30))
         time.sleep(0.1)
-        decode_mig_status(sds.read_soc_reg(0x201))
+        print "counts 0x%08x" % sds.read_soc_reg(0x212)
+        decode_mig_status(sds.read_soc_reg(0x211))
+
         print "read from FIFO"
         for i in range(n):
-            print "rd %2d -> 0x%08x" % (i, sds.read_soc_reg(0x211))
+            print "rd %2d -> 0x%08x" % (i, sds.read_soc_reg(0x218))
         time.sleep(0.1)
-        decode_mig_status(sds.read_soc_reg(0x201))
+        print "counts 0x%08x" % sds.read_soc_reg(0x212)
+        decode_mig_status(sds.read_soc_reg(0x211))
 
 if __name__ == '__main__':
     main()

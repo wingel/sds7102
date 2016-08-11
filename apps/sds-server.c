@@ -273,8 +273,8 @@ int main(int argc, char *argv[])
             {
                 uint32_t buf[64];
 
-                v = soc[0x201];
-                if (!((v >> 4) & 1))
+                v = soc[0x211];
+                if (!((v >> 20) & 1))
                 {
                     printf("write fifo not empty, status 0x%08x\n", (unsigned)v);
                     goto err;
@@ -307,14 +307,14 @@ int main(int argc, char *argv[])
                  * we can do proper flushes instead. */
                 for (i = 0; i < n; i++)
                 {
-                    soc[0x210] = buf[i]; /* fill FIFO */
+                    soc[0x218] = buf[i]; /* fill FIFO */
                     usleep(10000);       /* need this to defeat the write buffer */
                 }
 
                 for (i = 10000; i; i--)
                 {
-                    v = soc[0x201];
-                    if (((v >> 8) & 0x7f) == n)
+                    v = soc[0x211];
+                    if (((v >> 12) & 0x7f) == n)
                         break;
                 }
                 if (!i)
@@ -324,12 +324,12 @@ int main(int argc, char *argv[])
                     goto err;
                 }
 
-                soc[0x200] = addr | ((n-1)<<24) | (0<<30); /* write */
+                soc[0x210] = addr | ((n-1)<<24) | (0<<30); /* write */
 
                 for (i = 10000; i; i--)
                 {
-                    v = soc[0x201];
-                    if (((v >> 4) & 1))
+                    v = soc[0x211];
+                    if (((v >> 20) & 1))
                         break;
                 }
                 if (!i)
@@ -338,9 +338,15 @@ int main(int argc, char *argv[])
                     goto err;
                 }
 
-                if (((v >> 7) & 1))
+                if (((v >> 23) & 1))
                 {
                     printf("write underrun, status 0x%08x\n", (unsigned)v);
+                    goto err;
+                }
+
+                if (((v >> 22) & 1))
+                {
+                    printf("write error, status 0x%08x\n", (unsigned)v);
                     goto err;
                 }
 
@@ -387,8 +393,8 @@ int main(int argc, char *argv[])
                 if (n > 32)
                     n = 32;
 
-                v = soc[0x201];
-                if (!((v >> 15) & 1))
+                v = soc[0x211];
+                if (!((v >> 8) & 1))
                 {
                     printf("read fifo not empty, status 0x%08x\n", (unsigned)v);
                     goto err;
@@ -396,13 +402,13 @@ int main(int argc, char *argv[])
 
                 v = addr | ((n-1)<<24) | (1<<30); /* read */
                 fprintf(stderr, "0x200 <- 0x%08x\n", (unsigned)v);
-                soc[0x200] = v;
+                soc[0x210] = v;
 
                 for (i = 10000; i; i--)
                 {
-                    v = soc[0x201];
+                    v = soc[0x211];
 
-                    if (((v >> 19) & 0x7f) == n)
+                    if (((v >> 0) & 0x7f) == n)
                         break;
                 }
                 if (!i)
@@ -411,10 +417,22 @@ int main(int argc, char *argv[])
                     goto err;
                 }
 
+                if (((v >> 11) & 1))
+                {
+                    printf("read overflow, status 0x%08x\n", (unsigned)v);
+                    goto err;
+                }
+
+                if (((v >> 10) & 1))
+                {
+                    printf("read error, status 0x%08x\n", (unsigned)v);
+                    goto err;
+                }
+
                 /* empty FIFO */
                 for (i = 0; i < n; i++)
                 {
-                    volatile uint32_t t = soc[0x211];
+                    volatile uint32_t t = soc[0x218];
                     printf("0x%08x\n", (unsigned)t);
                 }
 
@@ -422,8 +440,8 @@ int main(int argc, char *argv[])
                 count -= n;
             }
 
-            v = soc[0x201];
-            if (!((v >> 15) & 1))
+            v = soc[0x211];
+            if (!((v >> 8) & 1))
             {
                 printf("read fifo not empty after, status 0x%08x\n", (unsigned)v);
                 goto err;

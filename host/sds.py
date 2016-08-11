@@ -4,6 +4,7 @@ import sys
 import numpy
 import time
 from subprocess import Popen, PIPE
+import random
 
 GPA = tuple([ 0 + i for i in range(32) ])
 GPB = tuple([ 32 + i for i in range(16) ])
@@ -76,6 +77,27 @@ class SDS(object):
 
     def write_soc_reg(self, addr, value):
         self.write_soc_regs(addr, [ value ])
+
+    def read_ddr(self, addr, count):
+        cmd = 'read_ddr 0x%x %u' % (addr, count)
+        if self.verbose:
+            print cmd
+        self.fo.write(cmd + '\n')
+        self.fo.flush()
+
+        a = numpy.zeros(count, dtype = numpy.uint32)
+        for i in range(count):
+            s = self.fi.readline()
+            a[i] = int(s, 0)
+
+        return a
+
+    def write_ddr(self, addr, data):
+        cmd = 'write_ddr 0x%x %s' % (addr, ' '.join([ '0x%x' % v for v in data ]))
+        if self.verbose:
+            print cmd
+        self.fo.write(cmd + '\n')
+        self.fo.flush()
 
     def set_gpio(self, pin, value):
         cmd = 'set_gpio %u %u' % (pin, value)
@@ -192,6 +214,46 @@ class SDS(object):
 
         return data
 
+    def mig_reset(self):
+        self.write_soc_reg(0x200, 1)
+        print "ctrl 0x%08x" % self.read_soc_reg(0x200)
+        self.write_soc_reg(0x200, 0)
+        print "ctrl 0x%08x" % self.read_soc_reg(0x200)
+        time.sleep(0.1)
+        print "ctrl 0x%08x" % self.read_soc_reg(0x200)
+        print
+
+    def mig_capture(self, count):
+        self.mig_reset()
+        self.write_reg(0x230, 0)
+        self.write_reg(0x230, 1)
+        time.sleep(0.1)
+
+        data = self.read_ddr(0, count)
+
+        if 0:
+            data2 = self.read_ddr(0, count)
+            assert all(data == data2)
+
+        print "capture_status 0x%08x" % self.read_reg(0x230)
+
+        s = numpy.reshape(data, (len(data) / 64, 2, 32))
+        s0 = numpy.reshape(s[:,0,:], len(data)/2)
+        s1 = numpy.reshape(s[:,1,:], len(data)/2)
+
+        # I need to to this to make the offsets align, I need to think
+        # a bit about why this happens.
+        if 1:
+            s0 = s0[:-2]
+            s1 = s1[2:]
+
+        print len(s0)
+        print len(s1)
+
+        data = numpy.reshape(numpy.dstack((s0, s1)), len(s0)+len(s1))
+
+        return data
+
     def soc(self, count):
         """Get a SoC bus trace"""
 
@@ -278,7 +340,7 @@ def main():
 
     # sds.capture(16)
 
-    if 0:
+    if 1:
         print "counts 0x%08x" % sds.read_soc_reg(0x212)
         decode_mig_status(sds.read_soc_reg(0x211))
 
@@ -310,6 +372,8 @@ def main():
         print "counts 0x%08x" % sds.read_soc_reg(0x212)
         decode_mig_status(sds.read_soc_reg(0x211))
 
+    sds.write_ddr(20, [ 0xdeadbeef, 0xfeedf00f ])
+
     n = 31
     o = 0
     if 1:
@@ -325,6 +389,18 @@ def main():
         time.sleep(0.1)
         print "counts 0x%08x" % sds.read_soc_reg(0x212)
         decode_mig_status(sds.read_soc_reg(0x211))
+
+    data = sds.read_ddr(0, 32)
+    for i in range(len(data)):
+        print "%2d -> 0x%08x" % (i, data[i])
+
+    n = 0x100
+    o = 0x100
+    wr_data = [ random.randrange(1<<32) for _ in range(n) ]
+    sds.write_ddr(o, wr_data)
+    rd_data = sds.read_ddr(o, n)
+
+    assert all(wr_data == rd_data)
 
 if __name__ == '__main__':
     main()

@@ -20,7 +20,7 @@ from util import tristate
 from regfile import RegFile, Field, RoField, RwField, Port
 from ddr import Ddr, DdrBus, ddr_connect
 from simplebus import SimpleBus, SimpleMux, SimpleAlgo, SimpleRam
-from sampler import Sampler
+from sampler import Sampler, MigSampler
 from shifter import Shifter, ShifterBus
 from ram import Ram
 from mig import Mig, MigPort, mig_with_tb
@@ -295,9 +295,18 @@ def top(din, init_b, cclk,
     insts.append(adc_ovr_inst)
 
     if 1:
+        fifo_overflow_0 = Signal(False)
+        cmd_overflow_0 = Signal(False)
+        fifo_overflow_1 = Signal(False)
+        cmd_overflow_1 = Signal(False)
+
         adc_capture = Signal(False)
         adc_ctl = RegFile('adc_ctl', "ADC control", [
             RwField(spi_system, 'adc_capture', "Capture samples", adc_capture),
+            RoField(spi_system, 'fifo_overflow_0', "", fifo_overflow_0),
+            RoField(spi_system, 'cmd_overflow_0', "", cmd_overflow_0),
+            RoField(spi_system, 'fifo_overflow_', "", fifo_overflow_1),
+            RoField(spi_system, 'cmd_overflow_1', "", cmd_overflow_1),
             ])
         mux.add(adc_ctl, 0x230)
 
@@ -305,6 +314,7 @@ def top(din, init_b, cclk,
         adc_capture_sync_inst = syncro(adc_clk, adc_capture, adc_capture_sync)
         insts.append(adc_capture_sync_inst)
 
+    if 0:
         adc_sampler_0 = Sampler(addr_depth = 1024,
                                 sample_clk = adc_clk,
                                 sample_data = adc_dat_0,
@@ -318,6 +328,31 @@ def top(din, init_b, cclk,
                                 sample_enable = adc_capture_sync,
                                 skip_cnt = 99)
         mux.add(adc_sampler_1, 0x6000)
+
+    if 1:
+        adc_mig_port_0 = MigPort(adc_clk)
+        mig_ports[2] = adc_mig_port_0
+        mig_sampler_0 = MigSampler(port = adc_mig_port_0,
+                                   base = 32, chunk = 32, stride = 64,
+                                   count = 256 * 1024,
+                                   sample_clk = adc_clk,
+                                   sample_data = adc_dat_0,
+                                   sample_enable = adc_capture_sync,
+                                   fifo_overflow = fifo_overflow_0,
+                                   cmd_overflow = cmd_overflow_0)
+        insts.append(mig_sampler_0.gen())
+
+        adc_mig_port_1 = MigPort(adc_clk)
+        mig_ports[3] = adc_mig_port_1
+        mig_sampler_1 = MigSampler(port = adc_mig_port_1,
+                                   base = 0, chunk = 32, stride = 64,
+                                   count = 256 * 1024,
+                                   sample_clk = adc_clk,
+                                   sample_data = adc_dat_1,
+                                   sample_enable = adc_capture_sync,
+                                   fifo_overflow = fifo_overflow_1,
+                                   cmd_overflow = cmd_overflow_1)
+        insts.append(mig_sampler_1.gen())
 
     ####################################################################
     # Analog frontend

@@ -19,13 +19,13 @@ def main():
 
     if 1:
         # Set the vertical shift for channel 1 and 2
-        sds.dac8532(0, 0x7bc3)
-        sds.dac8532(1, 0x7681)
+        sds.dac8532(0, 0x7800)
+        sds.dac8532(1, 0x6c00)
 
     if 1:
         # Set the gain for channel 1 and 2
-        sds.lmh6518(0, 0xc7)
-        sds.lmh6518(1, 0xc7)
+        sds.lmh6518(0, 0xc9)
+        sds.lmh6518(1, 0xca)
 
     if 1:
         # Set the sampling frequency
@@ -62,7 +62,11 @@ def main():
         sds.bu2506(1, 0x295)
         sds.bu2506(2, 0x295)
 
-    data = sds.capture(1024)
+    if 0:
+        data = sds.capture(1024)
+    else:
+        data = sds.mig_capture(4 * 65536)
+
     numpy.savetxt('data.txt', data, fmt = '%u', delimiter = ' ')
     samples = convert(data)
 

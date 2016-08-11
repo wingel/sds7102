@@ -138,6 +138,7 @@ class Mig(object):
         self.MEMCLK_PERIOD = 3000
 
         self.DIVCLK_DIVIDE = 1
+        self.CLKFBOUT_MULT = 6    # 133 / 1 * 6 = 800 MHz
         self.CLKFBOUT_MULT = 5    # 133 / 1 * 5 = 666 MHz
 
         self.CLKOUT0_DIVIDE = 1

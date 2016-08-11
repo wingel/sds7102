@@ -380,7 +380,7 @@ int main(int argc, char *argv[])
 	    else
 	    {
 		count = strtoul(start, &end, 0);
-		if (*end || count > ARRAY_SIZE(buf))
+		if (*end || count > 64 * 1024 * 1024)
 		{
 		    printf("error: invalid count \"%s\"\n", start);
 		    goto err;
@@ -401,7 +401,7 @@ int main(int argc, char *argv[])
                 }
 
                 v = addr | ((n-1)<<24) | (1<<30); /* read */
-                fprintf(stderr, "0x200 <- 0x%08x\n", (unsigned)v);
+                // fprintf(stderr, "0x200 <- 0x%08x\n", (unsigned)v);
                 soc[0x210] = v;
 
                 for (i = 10000; i; i--)

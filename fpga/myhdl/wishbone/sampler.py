@@ -88,3 +88,77 @@ class Sampler(WbSlave):
                     sample_addr.next = 0
 
         return comb, seq, inst
+
+class MigSampler(object):
+    def __init__(self, port, base, chunk, stride, count,
+                 sample_clk, sample_data, sample_enable,
+                 fifo_overflow, cmd_overflow):
+        self.port = port
+        self.base = base
+        self.chunk = chunk
+        self.stride = stride
+        self.count = count
+        self.sample_clk = sample_clk
+        self.sample_data = sample_data
+        self.sample_enable = sample_enable
+
+        self.fifo_overflow = fifo_overflow
+        self.cmd_overflow = cmd_overflow
+
+    def gen(self):
+        fifo_size = 512
+
+        fifo = [ Signal(intbv(0)[32:]) for _ in range(fifo_size) ]
+        fifo_head = Signal(intbv(0, 0, fifo_size))
+        fifo_tail = Signal(intbv(0, 0, fifo_size))
+
+        addr = Signal(intbv(0, 0, self.count * self.chunk))
+        cnt = Signal(intbv(0, 0, self.count+1))
+        cnk = Signal(intbv(0, 0, self.chunk))
+
+        @always(self.sample_clk.posedge)
+        def sample_seq():
+            self.port.cmd_en.next = 0
+            self.port.cmd_byte_addr.next = addr << 2
+            self.port.cmd_instr.next = 0
+            self.port.cmd_bl.next = self.chunk - 1
+
+            self.port.wr_en.next = 0
+            self.port.wr_data.next = self.sample_data
+            self.port.wr_mask.next = 0
+
+            if self.sample_enable:
+                if cnt < self.count:
+                    fifo_next = (fifo_head + 1) & (fifo_size - 1)
+                    if fifo_next != fifo_tail:
+                        fifo[fifo_head].next = self.sample_data
+                        fifo_head.next = fifo_next
+                    else:
+                        self.fifo_overflow.next = 1
+
+                if fifo_head != fifo_tail:
+                    if not self.port.wr_full:
+                        self.port.wr_en.next = 1
+                        self.port.wr_data.next = fifo[fifo_tail]
+                        fifo_tail.next = (fifo_tail.next + 1) & (fifo_size - 1)
+
+                    if fifo_tail & (self.chunk - 1) == self.chunk - 1:
+                        self.port.cmd_en.next = 1
+                        addr.next = addr + self.stride
+                        cnt.next = cnt + 1
+
+                        if self.port.cmd_full:
+                            self.cmd_overflow.next = 1
+
+            else:
+                cnk.next = 0
+                cnt.next = 0
+                addr.next = self.base
+
+                fifo_head.next = 0
+                fifo_tail.next = 0
+
+                self.fifo_overflow.next = 0
+                self.cmd_overflow.next = 0
+
+        return sample_seq

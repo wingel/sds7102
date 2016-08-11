@@ -61,10 +61,10 @@ def convert(a):
 
     elif 1:
         order = [
-            [ 'E13', 'F10', 'D11', 'c11', 'b14', 'C13', 'B12', 'B10' ],
             [ 'J14', 'h15', 'G14', 'F15', 'E15', 'd14', 'C15', 'B15' ],
-            [ 'f12', 'H13', 'g12', 'J13', 'J11', 'M13', 'L12', 'K12' ],
+            [ 'E13', 'F10', 'D11', 'c11', 'b14', 'C13', 'B12', 'B10' ],
             [ 'K15', 'l14', 'M15', 'n14', 'P15', 'R15', 'R14', 't14' ],
+            [ 'f12', 'H13', 'g12', 'J13', 'J11', 'M13', 'L12', 'K12' ],
             ]
 
     forder = [val for sublist in order for val in sublist]
@@ -156,7 +156,7 @@ def display(samples):
     fig = plt.figure(1, figsize = (8, 6))
 
     for i, (c, m) in enumerate([ ('r','.'), ('g','.'), ('b','.'), ('m','.') ]):
-        plt.plot(numpy.array(range(len(samples[i]))) + 0.25 * i, samples[i],
+        plt.plot(numpy.array(range(len(samples[i]))) + 0.5 * (i & 1), samples[i],
                  color = c, marker = m, linestyle = '')
 
     plt.show()
@@ -169,7 +169,7 @@ def save(fn, samples):
     fig = plt.figure(1, figsize = (8, 6))
 
     for i, (c, m) in enumerate([ ('r','.'), ('g','.'), ('b','.'), ('m','.') ]):
-        plt.plot(numpy.array(range(len(samples[i]))) + 0.25 * i, samples[i],
+        plt.plot(numpy.array(range(len(samples[i]))) + 0.5 * (i & 1), samples[i],
                  color = c, marker = m, linestyle = '')
 
     plt.tight_layout()

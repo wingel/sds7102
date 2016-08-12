@@ -66,11 +66,12 @@ def convert(a):
             [ 'f12', 'H13', 'g12', 'J13', 'J11', 'M13', 'L12', 'K12' ], # DQ
             ]
 
-    forder = [val for sublist in order for val in sublist]
-    print "forder", forder
-    for i in range(32):
-        if pins[i].lower() in forder:
-            a ^= (1<<i)
+    if 0:
+        forder = [val for sublist in order for val in sublist]
+        print "forder", forder
+        for i in range(32):
+            if pins[i].lower() in forder:
+                a ^= (1<<i)
 
     if 0:
         vand = 0xffffffff

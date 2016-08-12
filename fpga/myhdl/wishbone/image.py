@@ -257,6 +257,8 @@ def top(din, init_b, cclk,
     ####################################################################
     # ADC bus
 
+    ADC_INVERT = 0x51a04418
+
     adc_clk = Signal(False)
     adc_clk_b = Signal(False)
     adc_clk_ibuf_inst = ibufgds_diff_out('ibufgds_diff_out_adc_clk',
@@ -269,13 +271,22 @@ def top(din, init_b, cclk,
                                    adc_dat_p, adc_dat_n, adc_dat)
     insts.append(adc_dat_ibuf_inst)
 
-    adc_dat_0 = Signal(intbv(0)[len(adc_dat):])
-    adc_dat_1 = Signal(intbv(0)[len(adc_dat):])
+    adc_dat_tmp_0 = Signal(intbv(0)[len(adc_dat):])
+    adc_dat_tmp_1 = Signal(intbv(0)[len(adc_dat):])
     adc_dat_ddr_inst = iddr2('adc_dat_iddr2',
-                             adc_dat, adc_dat_0, adc_dat_1,
+                             adc_dat, adc_dat_tmp_0, adc_dat_tmp_1,
                              c0 = adc_clk, c1 = adc_clk_b,
                              ddr_alignment = 'C0')
     insts.append(adc_dat_ddr_inst)
+
+    adc_dat_0 = Signal(intbv(0)[len(adc_dat):])
+    adc_dat_1 = Signal(intbv(0)[len(adc_dat):])
+
+    @always_comb
+    def adc_dat_inv_inst():
+        adc_dat_0.next = adc_dat_tmp_0 ^ ADC_INVERT
+        adc_dat_1.next = adc_dat_tmp_1 ^ ADC_INVERT
+    insts.append(adc_dat_inv_inst)
 
     adc_ovr = Signal(False)
     adc_ovr_inst = ibufds('ibufds_adc_ovr',

@@ -237,18 +237,17 @@ class Ddr(object):
                 simple_bus.RD.next = 1
 
             elif rds[self.CL-2]:
-                simple_bus.ADDR.next =  ((adrs[self.CL-2]>>1)+1) & ((1<<len(simple_bus.ADDR))-1)
+                simple_bus.ADDR.next = ((adrs[self.CL-2]>>1)+1) & ((1<<len(simple_bus.ADDR))-1)
                 simple_bus.RD.next = 1
 
             if wrs[self.CL+1]:
                 simple_bus.ADDR.next = (adrs[self.CL+1]>>1) & ((1<<len(simple_bus.ADDR))-1)
-                if 0 or not wr_mask[0] or not wr_mask[1]:
+                if not wr_mask[0] or not wr_mask[1]:
                     simple_bus.WR.next = 1
 
-
             elif wrs[self.CL+2]:
-                simple_bus.ADDR.next =  ((adrs[self.CL+2]>>1)+1) & ((1<<len(simple_bus.ADDR))-1)
-                if 0 or not wr_mask[0] or not wr_mask[1]:
+                simple_bus.ADDR.next = ((adrs[self.CL+2]>>1)+1) & ((1<<len(simple_bus.ADDR))-1)
+                if not wr_mask[0] or not wr_mask[1]:
                     simple_bus.WR.next = 1
 
         insts.append(simple_bus_seq)

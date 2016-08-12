@@ -79,18 +79,9 @@ def top(din, init_b, cclk,
     # A MUX and some test code for it
 
     soc_clk = Signal(False)
-    soc_clk._name = 'soc_clk' # Must match name of timing spec in ucf file
     soc_clk_b = Signal(False)
-    soc_clk_b._name = 'soc_clk_b' # Must match name of timing spec in ucf file
 
-    # MyHDL won't create a declaration of soc_clk, try to force it
-    soc_clk_tmp = Signal(False)
-    @always_comb
-    def soc_clk_tmp_inst():
-        soc_clk_tmp.next = soc_clk
-    insts.append(soc_clk_tmp_inst)
-
-    soc_system = System(soc_clk_tmp, None)
+    soc_system = System(soc_clk, None)
 
     sm = SimpleMux(soc_system)
 
@@ -314,7 +305,7 @@ def top(din, init_b, cclk,
         adc_capture_sync_inst = syncro(adc_clk, adc_capture, adc_capture_sync)
         insts.append(adc_capture_sync_inst)
 
-    if 0:
+    if 1:
         adc_sampler_0 = Sampler(addr_depth = 1024,
                                 sample_clk = adc_clk,
                                 sample_data = adc_dat_0,

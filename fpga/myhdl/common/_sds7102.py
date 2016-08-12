@@ -82,16 +82,18 @@ class SDS7102(FPGA):
         'adc_clk_p':	dict(pins = ('E7',), iostandard = 'LVDS_25'),
         'adc_clk_n':	dict(pins = ('E8',), iostandard = 'LVDS_25'),
 
-        'adc_dat_p':	dict(pins = ('B10', 'C11', 'B12', 'C13', 'F10', 'B14', 'D11', 'E13',
-                                     'B15', 'F12', 'D14', 'C15', 'E15', 'F15', 'G14', 'H15',
-                                     'G12', 'H13', 'J11', 'J13', 'K12', 'J14', 'K15', 'N14',
-                                     'M15', 'L14', 'P15', 'R15', 'R14', 'T14', 'L12', 'M13',
-            ), iostandard = 'LVDS_25'),
-        'adc_dat_n':	dict(pins = ('A10', 'A11', 'A12', 'A13', 'E11', 'A14', 'D12', 'E12',
-                                     'B16', 'G11', 'D16', 'C16', 'E16', 'F16', 'G16', 'H16',
-                                     'H11', 'H14', 'J12', 'K14', 'K11', 'J16', 'K16', 'N16',
-                                     'M16', 'L16', 'P16', 'R16', 'T15', 'T13', 'L13', 'M14',
-                                     ), iostandard = 'LVDS_25'),
+        'adc_dat_p':	dict(
+        pins = ('B10', 'B12', 'C13', 'B14', 'C11', 'D11', 'F10', 'E13',
+                'B15', 'C15', 'D14', 'E15', 'F15', 'G14', 'H15', 'J14',
+                'K12', 'L12', 'M13', 'J11', 'J13', 'G12', 'H13', 'F12',
+                'T14', 'R14', 'R15', 'P15', 'N14', 'M15', 'L14', 'K15',
+                ), iostandard = 'LVDS_25'),
+        'adc_dat_n':	dict(
+        pins = ('A10', 'A12', 'A13', 'A14', 'A11', 'D12', 'E11', 'E12',
+                'B16', 'C16', 'D16', 'E16', 'F16', 'G16', 'H16', 'J16',
+                'K11', 'L13', 'M14', 'J12', 'K14', 'H11', 'H14', 'G11',
+                'T13', 'T15', 'R16', 'P16', 'N16', 'M16', 'L16', 'K16',
+                ), iostandard = 'LVDS_25'),
 
         'adc_ovr_p':    dict(pins = ('F13',), iostandard = 'LVDS_25'),
         'adc_ovr_n':    dict(pins = ('F14',), iostandard = 'LVDS_25'),

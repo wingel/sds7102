@@ -192,7 +192,7 @@ class Ddr(object):
         def adrs_comb():
             for i in range(0, len(adrs)-1):
                 adrs[i+1].next = adrs_reg[i]
-            adrs[0].next = (adr_hi << 10) | ddr_bus.A[10:]
+            adrs[0].next = (adr_hi_reg << 10) | ddr_bus.A[10:]
         insts.append(adrs_comb)
 
         @always_seq (system.CLK.posedge, system.RST)

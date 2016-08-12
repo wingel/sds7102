@@ -206,13 +206,13 @@ def top(din, init_b, cclk,
 
     @always_comb
     def mig_data_comb():
-        mig_port.wr_en.next = mig_data_bus.WR
-        mig_port.wr_data.next = mig_data_bus.WR_DATA
-        mig_port.rd_en.next = mig_data_bus.RD
+         mig_port.rd_en.next = mig_data_bus.RD
     insts.append(mig_data_comb)
 
     @always_seq (soc_system.CLK.posedge, soc_system.RST)
     def mig_data_seq():
+        mig_port.wr_en.next = mig_data_bus.WR
+        mig_port.wr_data.next = mig_data_bus.WR_DATA
         if mig_data_bus.RD:
             mig_data_bus.RD_DATA.next = mig_port.rd_data
         else:

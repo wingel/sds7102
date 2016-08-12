@@ -215,14 +215,12 @@ CONFIG MCB_PERFORMANCE= STANDARD;
 # TIMESPEC "TS_SYS_CLK3" = PERIOD "SYS_CLK3"  3.0  ns HIGH 50 %;
 
 NET "soc_clk_p" TNM_NET = "SOC_CLK";
+NET "soc_clk_n" TNM_NET = "SOC_CLK";
 TIMESPEC "TS_SOC_CLK" = PERIOD "SOC_CLK"  7.5  ns HIGH 50 %;
 
-NET "adc_clk" TNM_NET = "ADC_CLK";
-NET "adc_clk_b" TNM_NET = "ADC_CLK";
+NET "adc_clk_p" TNM_NET = "ADC_CLK";
+NET "adc_clk_n" TNM_NET = "ADC_CLK";
 TIMESPEC "TS_ADC_CLK" = PERIOD "ADC_CLK"  8  ns HIGH 50 %;
-
-# NET "soc_clk" TNM_NET = "SOC_CLK_INT";
-# TIMESPEC "TS_SOC_CLK_INT" = PERIOD "SOC_CLK_INT"  6  ns HIGH 50 %;
 '''
 
     for k, v in sorted(default_ports.items()):

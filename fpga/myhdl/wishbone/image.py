@@ -264,9 +264,6 @@ def top(din, init_b, cclk,
                                          adc_clk, adc_clk_b)
     insts.append(adc_clk_ibuf_inst)
 
-    adc_clk._name = 'adc_clk' # Must match name of timing spec in ucf file
-    adc_clk_b._name = 'adc_clk_b' # Must match name of timing spec in ucf file
-
     adc_dat = Signal(intbv(0)[len(adc_dat_p):])
     adc_dat_ibuf_inst = ibufds_vec('adc_dat_ibufds',
                                    adc_dat_p, adc_dat_n, adc_dat)

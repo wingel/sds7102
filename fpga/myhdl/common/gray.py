@@ -3,25 +3,51 @@ import hacking
 if __name__ == '__main__':
     hacking.reexec_if_needed('gray.py')
 
-from myhdl import Signal, intbv, always, always_comb
+from myhdl import Signal, intbv, always, always_comb, instances
+
+def gray_encode(bin_value):
+    return bin_value ^ (bin_value >> 1)
+
+def gray_decode(gray_value):
+    bin_value = 0
+    t = 0
+    for i in range(len(gray_value)):
+        n = len(gray_value) - i - 1
+        t ^= gray_value[n]
+        bin_value |= t << n
+    return bin_value & ((1<<len(gray_value)) - 1)
 
 def gray_encoder(bin_value, gray_value):
     assert len(bin_value) == len(gray_value)
     @always_comb
     def comb():
-        gray_value.next = bin_value ^ (bin_value >> 1)
+        gray_value.next = gray_encode(bin_value)
     return comb
 
 def gray_decoder(gray_value, bin_value):
     assert len(gray_value) == len(bin_value)
     @always_comb
     def comb():
-        t = 0
-        for i in range(len(bin_value)):
-            n = len(bin_value) - i - 1
-            t ^= gray_value[n]
-            bin_value.next[n] = t
+        bin_value.next = gray_decode(gray_value)
     return comb
+
+class GrayIncrementer(object):
+    def __init__(self, value):
+        self.gray_value = Signal(value)
+        self.bin_value = Signal(value)
+        self.bin_inc = Signal(value)
+        self.gray_inc = Signal(value)
+
+    def gen(self):
+        value_decoder_inst = gray_decoder(self.gray_value, self.bin_value)
+
+        @always_comb
+        def inc_inst():
+            self.bin_inc.next = (self.bin_value + 1) & ((1<<len(self.bin_inc))-1)
+
+        inc_encoder_inst = gray_encoder(self.bin_inc, self.gray_inc)
+
+        return instances()
 
 def gray_counter(clk, gray_value):
     cur_gray = Signal(intbv(0)[len(gray_value):0])

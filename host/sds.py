@@ -225,32 +225,57 @@ class SDS(object):
 
     def mig_capture(self, count):
         self.mig_reset()
+
         self.write_reg(0x230, 0)
         self.write_reg(0x230, 1)
         time.sleep(0.1)
 
-        data = self.read_ddr(0, count)
+        data = self.read_ddr(0, count / 2)
 
         if 0:
             data2 = self.read_ddr(0, count)
             assert all(data == data2)
 
         print "capture_status 0x%08x" % self.read_reg(0x230)
+        print
 
-        s = numpy.reshape(data, (len(data) / 64, 2, 32))
-        s0 = numpy.reshape(s[:,0,:], len(data)/2)
-        s1 = numpy.reshape(s[:,1,:], len(data)/2)
+        print "p2"
+        decode_mig_status(self.read_soc_reg(0x220))
+        print "p3"
+        decode_mig_status(self.read_soc_reg(0x221))
 
-        # I need to to this to make the offsets align, I need to think
-        # a bit about why this happens.
+        chunk = 32
+
         if 1:
-            s0 = s0[:-2]
-            s1 = s1[2:]
+            data = data[:int(len(data) / (chunk * 2)) * (chunk * 2)]
 
-        print len(s0)
-        print len(s1)
+            s = numpy.reshape(data, (len(data) / (chunk * 2), 2, chunk))
+            s0 = numpy.reshape(s[:,0,:], len(data)/2)
+            s1 = numpy.reshape(s[:,1,:], len(data)/2)
 
-        data = numpy.reshape(numpy.dstack((s0, s1)), len(s0)+len(s1))
+            if 0:
+                print s0[:256]
+                print s1[:256]
+
+            if 0:
+                # Check of synthetic data
+                o = s0[0]
+                for i in range(len(s0)):
+                    d = s0[i] - (o + 2 * i)
+                    if d:
+                        print "bad s0", hex(i), d, s0[i-4:i+5]
+                        o = s0[i] - 2 * i
+
+                o = s1[0]
+                for i in range(len(s1)):
+                    d = s1[i] - (o + 2 * i)
+                    if d:
+                        print "bad s1", hex(i), d, s1[i-4:i+5]
+                        o = s1[i] - 2 * i
+
+            data = numpy.reshape(numpy.dstack((s0, s1)), len(s0)+len(s1))
+
+            # print data[:512]
 
         return data
 

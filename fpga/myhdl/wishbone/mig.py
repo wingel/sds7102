@@ -7,6 +7,8 @@ from myhdl import Signal, ResetSignal, SignalType, instance, always_comb, always
 
 from spartan6 import pll_adv, bufg, bufgce, bufpll_mcb, mcb_ui_top
 
+from simplebus import SimpleReg, RoField, DummyField
+
 def mig_with_tb(sys_rst_i, sys_clk_p, sys_clk_n,
                 calib_done, error,
                 mcb3_dram_ck, mcb3_dram_ck_n,
@@ -131,6 +133,29 @@ class MigPort(object):
         self.rd_count = Signal(intbv(0)[7:])
         self.rd_overflow = Signal(False)
         self.rd_error = Signal(False)
+
+    def status_reg(self, system, n):
+        # Port status register, all the status bits from cmd, wr and rd
+
+        status_reg = SimpleReg(system,
+                               'mig_status_%d' % n,
+                               "MIG Status %d" % n, [
+            RoField('rd_count', "", self.rd_count),
+            DummyField(1),
+            RoField('rd_empty', "", self.rd_empty),
+            RoField('rd_full', "", self.rd_full),
+            RoField('rd_error', "", self.rd_error),
+            RoField('rd_overflow', "", self.rd_overflow),
+            RoField('wr_count', "", self.wr_count),
+            DummyField(1),
+            RoField('wr_empty', "", self.wr_empty),
+            RoField('wr_full', "", self.wr_full),
+            RoField('wr_error', "", self.wr_error),
+            RoField('wr_underrun', "", self.wr_underrun),
+            RoField('cmd_empty', "", self.cmd_empty),
+            RoField('cmd_full', "", self.cmd_full),
+        ])
+        return status_reg
 
 class Mig(object):
     def __init__(self):

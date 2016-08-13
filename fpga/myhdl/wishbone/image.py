@@ -20,7 +20,7 @@ from util import tristate
 from regfile import RegFile, Field, RoField, RwField, Port
 from ddr import Ddr, DdrBus, ddr_connect
 from simplebus import SimpleBus, SimpleMux, SimpleAlgo, SimpleRam
-from sampler import Sampler, MigSampler
+from sampler import Sampler, MigSampler, FifoSampler, MigFifoWriter
 from shifter import Shifter, ShifterBus
 from ram import Ram
 from mig import Mig, MigPort, mig_with_tb
@@ -154,25 +154,9 @@ def top(din, init_b, cclk,
         mig_port.cmd_en.next = mig_cmd_bus.WR
     insts.append(mig_cmd_seq)
 
-    # MIG port 0 status register, all the status bits from cmd, wr and rd
-    mig_status = SimpleReg(soc_system, 'mig_ctrl', "DRAM ctrl", [
-        SimpleRoField('rd_count', "", mig_port.rd_count),
-        SimpleDummyField(1),
-        SimpleRoField('rd_empty', "", mig_port.rd_empty),
-        SimpleRoField('rd_full', "", mig_port.rd_full),
-        SimpleRoField('rd_error', "", mig_port.rd_error),
-        SimpleRoField('rd_overflow', "", mig_port.rd_overflow),
-        SimpleRoField('wr_count', "", mig_port.wr_count),
-        SimpleDummyField(1),
-        SimpleRoField('wr_empty', "", mig_port.wr_empty),
-        SimpleRoField('wr_full', "", mig_port.wr_full),
-        SimpleRoField('wr_error', "", mig_port.wr_error),
-        SimpleRoField('wr_underrun', "", mig_port.wr_underrun),
-        SimpleRoField('cmd_empty', "", mig_port.cmd_empty),
-        SimpleRoField('cmd_full', "", mig_port.cmd_full),
-        ])
-    sm.add(mig_status.bus(), addr = 0x211)
-    insts.append(mig_status.gen())
+    mig_status_0 = mig_port.status_reg(soc_system, 0)
+    sm.add(mig_status_0.bus(), addr = 0x211)
+    insts.append(mig_status_0.gen())
 
     # MIG port 0 counts, just a count of MIG read/write strobes to
     # help me debug the SoC side of things.
@@ -295,17 +279,13 @@ def top(din, init_b, cclk,
 
     if 1:
         fifo_overflow_0 = Signal(False)
-        cmd_overflow_0 = Signal(False)
         fifo_overflow_1 = Signal(False)
-        cmd_overflow_1 = Signal(False)
 
         adc_capture = Signal(False)
         adc_ctl = RegFile('adc_ctl', "ADC control", [
             RwField(spi_system, 'adc_capture', "Capture samples", adc_capture),
             RoField(spi_system, 'fifo_overflow_0', "", fifo_overflow_0),
-            RoField(spi_system, 'cmd_overflow_0', "", cmd_overflow_0),
             RoField(spi_system, 'fifo_overflow_', "", fifo_overflow_1),
-            RoField(spi_system, 'cmd_overflow_1', "", cmd_overflow_1),
             ])
         mux.add(adc_ctl, 0x230)
 
@@ -329,28 +309,64 @@ def top(din, init_b, cclk,
         mux.add(adc_sampler_1, 0x6000)
 
     if 1:
-        adc_mig_port_0 = MigPort(adc_clk)
+        # Real ADC data
+
+        mig_data_0 = adc_dat_0
+        mig_data_1 = adc_dat_1
+
+    else:
+        # Synthetic ADC data to test the FIFO
+
+        mig_data_0 = Signal(intbv(0)[32:])
+        mig_data_1 = Signal(intbv(0)[32:])
+
+        @always_seq(adc_clk.posedge, None)
+        def adc_dummy_inst():
+            if adc_capture_sync:
+                mig_data_0.next = mig_data_0 + 2
+                mig_data_1.next = mig_data_1 + 2
+            else:
+                mig_data_0.next = 1
+                mig_data_1.next = 0
+        insts.append(adc_dummy_inst)
+
+    if 1:
+        mig_chunk = 32
+
+        adc_mig_port_0 = MigPort(soc_system.CLK)
         mig_ports[2] = adc_mig_port_0
-        mig_sampler_0 = MigSampler(port = adc_mig_port_0,
-                                   base = 32, chunk = 32, stride = 64,
-                                   count = 256 * 1024,
-                                   sample_clk = adc_clk,
-                                   sample_data = adc_dat_0,
+
+        mig_status_2 = adc_mig_port_0.status_reg(soc_system, 2)
+        sm.add(mig_status_2.bus(), addr = 0x220)
+        insts.append(mig_status_2.gen())
+
+        mig_sampler_0 = MigSampler(sample_clk = adc_clk,
+                                   sample_data = mig_data_0,
                                    sample_enable = adc_capture_sync,
-                                   fifo_overflow = fifo_overflow_0,
-                                   cmd_overflow = cmd_overflow_0)
+                                   overflow = fifo_overflow_0,
+                                   system = soc_system,
+                                   port = adc_mig_port_0,
+                                   base = mig_chunk,
+                                   chunk = mig_chunk,
+                                   stride = mig_chunk * 2)
         insts.append(mig_sampler_0.gen())
 
-        adc_mig_port_1 = MigPort(adc_clk)
+        adc_mig_port_1 = MigPort(soc_system.CLK)
         mig_ports[3] = adc_mig_port_1
-        mig_sampler_1 = MigSampler(port = adc_mig_port_1,
-                                   base = 0, chunk = 32, stride = 64,
-                                   count = 256 * 1024,
-                                   sample_clk = adc_clk,
-                                   sample_data = adc_dat_1,
+
+        mig_status_3 = adc_mig_port_1.status_reg(soc_system, 3)
+        sm.add(mig_status_3.bus(), addr = 0x221)
+        insts.append(mig_status_3.gen())
+
+        mig_sampler_1 = MigSampler(sample_clk = adc_clk,
+                                   sample_data = mig_data_1,
                                    sample_enable = adc_capture_sync,
-                                   fifo_overflow = fifo_overflow_1,
-                                   cmd_overflow = cmd_overflow_1)
+                                   overflow = fifo_overflow_1,
+                                   system = soc_system,
+                                   port = adc_mig_port_1,
+                                   base = 0,
+                                   chunk = mig_chunk,
+                                   stride = mig_chunk * 2)
         insts.append(mig_sampler_1.gen())
 
     ####################################################################

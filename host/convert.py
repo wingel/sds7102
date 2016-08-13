@@ -166,7 +166,7 @@ def display(samples):
     fig = plt.figure(1, figsize = (8, 6))
 
     for i, (c, m) in enumerate([ ('r','.'), ('g','.'), ('b','.'), ('m','.') ]):
-        plt.plot(numpy.array(range(len(samples[i]))) + 0.5 * (i & 1), samples[i],
+        plt.plot(2 * numpy.array(range(len(samples[i]))) + (i & 1), samples[i],
                  color = c, marker = m, linestyle = '')
 
     plt.show()
@@ -179,7 +179,7 @@ def save(fn, samples):
     fig = plt.figure(1, figsize = (8, 6))
 
     for i, (c, m) in enumerate([ ('r','.'), ('g','.'), ('b','.'), ('m','.') ]):
-        plt.plot(numpy.array(range(len(samples[i]))) + 0.5 * (i & 1), samples[i],
+        plt.plot(2 * numpy.array(range(len(samples[i]))) + (i & 1), samples[i],
                  color = c, marker = m, linestyle = '')
 
     plt.tight_layout()

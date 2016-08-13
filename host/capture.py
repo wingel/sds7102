@@ -65,7 +65,7 @@ def main():
     if 0:
         data = sds.capture(1024)
     else:
-        data = sds.mig_capture(4 * 65536)
+        data = sds.mig_capture(512 * 1024)
 
     numpy.savetxt('data.txt', data, fmt = '%u', delimiter = ' ')
     samples = convert(data)

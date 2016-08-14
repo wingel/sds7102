@@ -3,7 +3,7 @@ import hacking
 if __name__ == '__main__':
     hacking.reexec_if_needed('spartan6.py')
 
-from myhdl import Signal, SignalType, instance, always_comb, intbv, always
+from myhdl import Signal, SignalType, ResetSignal, instance, always_comb, intbv, always
 
 use_xilinx = 1
 
@@ -790,7 +790,8 @@ def iobuf_delay_ddr2_fixed(name, i0, i1, o0, o1, oe0, oe1, io, clk, clk_b = None
 def pll_adv(
     name,
 
-    rst = 0,
+    rst = None,
+
     clkinsel = 1,                       # default to clkin1
     clkin1 = 0,
     clkin2 = 0,
@@ -869,6 +870,13 @@ def pll_adv(
                 s.next = clkin1 or clkfbin
             insts.append(inst)
 
+    rst_inv = ''
+    if rst is None:
+        rst = 0
+    elif isinstance(rst, ResetSignal):
+        if not rst.active:
+            rst_inv = '!'
+
     return insts
 
 pll_adv.verilog_code = '''
@@ -903,7 +911,7 @@ PLL_ADV #(
 )
 $name
 (
-    .RST         ($rst),
+    .RST         ($rst_inv$rst),
 
     .CLKFBIN     ($clkfbin),
     .CLKINSEL    ($clkinsel),
@@ -1321,9 +1329,6 @@ def mcb_ui_top(
     mcbx_dram_dq.read = True
     mcbx_dram_dq.driven = 'wire'
 
-    if sys_rst is None:
-        sys_rst = 0
-
     for s in [ sys_rst, ui_clk, sysclk_2x, sysclk_2x_180,
                pll_ce_0, pll_ce_90, pll_lock ]:
         if isinstance(s, SignalType):
@@ -1352,6 +1357,13 @@ def mcb_ui_top(
                ]:
         if isinstance(s, SignalType):
             s.driven = 'wire'
+
+    rst_inv = ''
+    if sys_rst is None:
+        sys_rst = 0
+    elif isinstance(sys_rst, ResetSignal):
+        if not sys_rst.active:
+            rst_inv = '!'
 
     C_MC_CALIBRATION_CLK_DIV  = 1
 
@@ -1487,7 +1499,7 @@ $name
     .pll_ce_0_bufpll_o             ($pll_ce_0_bufpll_o),
     .pll_ce_90_bufpll_o            ($pll_ce_90_bufpll_o),
     .pll_lock_bufpll_o             ($pll_lock_bufpll_o),
-    .sys_rst                       ($sys_rst),
+    .sys_rst                       ($rst_inv$sys_rst),
     .p0_arb_en                     ($p0_arb_en),
     .p0_cmd_clk                    ($p0_cmd_clk),
     .p0_cmd_en                     ($p0_cmd_en),

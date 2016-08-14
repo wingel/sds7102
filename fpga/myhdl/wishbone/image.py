@@ -100,26 +100,24 @@ def top(din, init_b, cclk,
         sm.add(sa.bus(), 0x10000)
 
     ####################################################################
-    # MIG control and status
+    # Create a MIG instance
 
-    mig_rst = ResetSignal(val = False, active = True, async = True)
-    mig_calib_done = Signal(False)
+    # The DDR memory controller uses the SoC clock pins as the input
+    # to its PLL.  It also generates soc_clk which is used above
 
-    # MIG control register
-    mig_control = SimpleReg(soc_system, 'mig_control', "MIG control", [
-        SimpleRwField('reset', "Reset", mig_rst),
-        SimpleRoField('calib_done', "Calib Done", mig_calib_done),
-        ])
-    sm.add(mig_control.bus(), addr = 0x200)
-    insts.append(mig_control.gen())
+    soc_clk_ibuf = Signal(False)
+    soc_clk_ibuf_inst = ibufgds('soc_clk_ibuf_inst',
+                                soc_clk_p, soc_clk_n,
+                                soc_clk_ibuf)
+    insts.append(soc_clk_ibuf_inst)
 
-    mig_ports = [ None ] * 6
+    mig = Mig(soc_clk_ibuf)
 
     ####################################################################
     # MIG port 0
 
-    mig_port = MigPort(soc_system.CLK)
-    mig_ports[0] = mig_port
+    mig_port = MigPort(mig, soc_system.CLK)
+    mig.ports[0] = mig_port
 
     # MIG port 0 command register
 
@@ -154,33 +152,13 @@ def top(din, init_b, cclk,
         mig_port.cmd_en.next = mig_cmd_bus.WR
     insts.append(mig_cmd_seq)
 
-    mig_status_0 = mig_port.status_reg(soc_system, 0)
-    sm.add(mig_status_0.bus(), addr = 0x211)
-    insts.append(mig_status_0.gen())
+    mig_status_0_bus, mig_status_0_inst = mig_port.status_reg(soc_system, 0)
+    sm.add(mig_status_0_bus, addr = 0x211)
+    insts.append(mig_status_0_inst)
 
-    # MIG port 0 counts, just a count of MIG read/write strobes to
-    # help me debug the SoC side of things.
-    mig_rd_count = Signal(intbv(0)[16:])
-    mig_wr_count = Signal(intbv(0)[16:])
-
-    mig_counts = SimpleReg(soc_system, 'mig_counts', "MIG counts", [
-        SimpleRoField('rd_count', "", mig_rd_count),
-        SimpleRoField('wr_count', "", mig_wr_count),
-        ])
-    sm.add(mig_counts.bus(), addr = 0x212)
-    insts.append(mig_counts.gen())
-
-    @always_seq(soc_system.CLK.posedge, soc_system.RST)
-    def mig_counts_seq():
-        if mig_rst:
-            mig_rd_count.next = 0
-            mig_wr_count.next = 0
-        else:
-            if mig_port.rd_en:
-                mig_rd_count.next = mig_rd_count + 1
-            if mig_port.wr_en:
-                mig_wr_count.next = mig_wr_count + 1
-    insts.append(mig_counts_seq)
+    mig_count_0_bus, mig_count_0_inst = mig_port.count_reg(soc_system, 0)
+    sm.add(mig_count_0_bus, addr = 0x212)
+    insts.append(mig_count_0_inst)
 
     # MIG port 0 read/write data.  This register must be a bit off
     # from any other regiters that might be read to avoid a read burst
@@ -333,12 +311,12 @@ def top(din, init_b, cclk,
     if 1:
         mig_chunk = 32
 
-        adc_mig_port_0 = MigPort(soc_system.CLK)
-        mig_ports[2] = adc_mig_port_0
+        adc_mig_port_0 = MigPort(mig, soc_system.CLK)
+        mig.ports[2] = adc_mig_port_0
 
-        mig_status_2 = adc_mig_port_0.status_reg(soc_system, 2)
-        sm.add(mig_status_2.bus(), addr = 0x220)
-        insts.append(mig_status_2.gen())
+        mig_status_2_bus, mig_status_2_inst = adc_mig_port_0.status_reg(soc_system, 2)
+        sm.add(mig_status_2_bus, addr = 0x220)
+        insts.append(mig_status_2_inst)
 
         mig_sampler_0 = MigSampler(sample_clk = adc_clk,
                                    sample_data = mig_data_0,
@@ -351,12 +329,12 @@ def top(din, init_b, cclk,
                                    stride = mig_chunk * 2)
         insts.append(mig_sampler_0.gen())
 
-        adc_mig_port_1 = MigPort(soc_system.CLK)
-        mig_ports[3] = adc_mig_port_1
+        adc_mig_port_1 = MigPort(mig, soc_system.CLK)
+        mig.ports[3] = adc_mig_port_1
 
-        mig_status_3 = adc_mig_port_1.status_reg(soc_system, 3)
-        sm.add(mig_status_3.bus(), addr = 0x221)
-        insts.append(mig_status_3.gen())
+        mig_status_3_bus, mig_status_3_inst = adc_mig_port_1.status_reg(soc_system, 3)
+        sm.add(mig_status_3_bus, addr = 0x221)
+        insts.append(mig_status_3_inst)
 
         mig_sampler_1 = MigSampler(sample_clk = adc_clk,
                                    sample_data = mig_data_1,
@@ -423,26 +401,15 @@ def top(din, init_b, cclk,
     ####################################################################
     # DDR memory using MIG
 
-    # The DDR memory controller uses the SoC clock pins as the input
-    # to its PLL.  It also generates soc_clk which is used above
-
-    soc_clk_ibuf = Signal(False)
-    soc_clk_ibuf_inst = ibufgds('soc_clk_ibuf_inst',
-                                soc_clk_p, soc_clk_n,
-                                soc_clk_ibuf)
-    insts.append(soc_clk_ibuf_inst)
-
-    mig = Mig()
-    mig.rst = mig_rst
-    mig.clkin = soc_clk_ibuf
+    mig_control_bus, mig_control_inst = mig.control_reg(soc_system)
+    sm.add(mig_control_bus, addr = 0x200)
+    insts.append(mig_control_inst)
 
     @always_comb
     def mig_soc_clk_inst():
         soc_clk.next = mig.soc_clk
         soc_clk_b.next = mig.soc_clk_b
     insts.append(mig_soc_clk_inst)
-
-    mig.calib_done = mig_calib_done
 
     mig.mcbx_dram_addr = mcb3_dram_a
     mig.mcbx_dram_ba = mcb3_dram_ba
@@ -458,8 +425,6 @@ def top(din, init_b, cclk,
     mig.mcbx_dram_udqs_n = mcb3_dram_udqs_n
     mig.mcbx_dram_udm = mcb3_dram_udm
     mig.mcbx_dram_ldm = mcb3_dram_dm
-
-    mig.ports = mig_ports
 
     mig_inst = mig.gen()
     insts.append(mig_inst)

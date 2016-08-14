@@ -3,11 +3,10 @@ import hacking
 if __name__ == '__main__':
     hacking.reexec_if_needed('mig.py')
 
-from myhdl import Signal, ResetSignal, SignalType, instance, always_comb, always_seq, intbv, always
+from myhdl import Signal, ResetSignal, SignalType, instance, always_comb, always_seq, intbv, instances
 
 from spartan6 import pll_adv, bufg, bufgce, bufpll_mcb, mcb_ui_top
-
-from simplebus import SimpleReg, RoField, DummyField
+from simplebus import SimpleReg, RwField, RoField, DummyField
 
 def mig_with_tb(sys_rst_i, sys_clk_p, sys_clk_n,
                 calib_done, error,
@@ -106,7 +105,9 @@ example_top #(
 '''
 
 class MigPort(object):
-    def __init__(self, clk, data_width = 32):
+    def __init__(self, mig, clk, data_width = 32):
+        self.mig = mig
+
         self.cmd_clk = clk
         self.cmd_en = Signal(False)
         self.cmd_instr = Signal(intbv(0)[3:])
@@ -134,12 +135,12 @@ class MigPort(object):
         self.rd_overflow = Signal(False)
         self.rd_error = Signal(False)
 
-    def status_reg(self, system, n):
+    def status_reg(self, system, name):
         # Port status register, all the status bits from cmd, wr and rd
 
-        status_reg = SimpleReg(system,
-                               'mig_status_%d' % n,
-                               "MIG Status %d" % n, [
+        reg = SimpleReg(system,
+                        'mig_status_%s' % name,
+                        "MIG status for port %s" % name, [
             RoField('rd_count', "", self.rd_count),
             DummyField(1),
             RoField('rd_empty', "", self.rd_empty),
@@ -155,10 +156,41 @@ class MigPort(object):
             RoField('cmd_empty', "", self.cmd_empty),
             RoField('cmd_full', "", self.cmd_full),
         ])
-        return status_reg
+        reg_inst = reg.gen()
+
+        return reg.bus(), instances()
+
+    def count_reg(self, system, name):
+        # Just a count of MIG read/write strobes for debugging
+        rd = Signal(intbv(0)[16:])
+        wr = Signal(intbv(0)[16:])
+
+        reg = SimpleReg(system,
+                        'mig_counts_%s' % name,
+                        "MIG counts for port %s", [
+            RoField('rd_count', "", rd),
+            RoField('wr_count', "", wr),
+            ])
+        reg_inst = reg.gen()
+
+        @always_seq(self.wr_clk.posedge, self.mig.rst)
+        def wr_seq():
+            if self.wr_en:
+                wr.next = wr + 1
+
+        @always_seq(self.rd_clk.posedge, self.mig.rst)
+        def rd_seq():
+            if self.rd_en:
+                rd.next = rd + 1
+
+        return reg.bus(), instances()
 
 class Mig(object):
-    def __init__(self):
+    def __init__(self, clkin):
+        self.clkin = clkin
+
+        self.rst = ResetSignal(True, True, True)
+
         # Memory data transfer clock period (ps)
         self.MEMCLK_PERIOD = 3000
 
@@ -170,9 +202,6 @@ class Mig(object):
         self.CLKOUT1_DIVIDE = 1
         self.CLKOUT2_DIVIDE = 20
         self.CLKOUT3_DIVIDE = 10
-
-        self.rst = None
-        self.clkin = Signal(False)
 
         self.calib_done = Signal(False)
 
@@ -207,6 +236,15 @@ class Mig(object):
 
         self.ports = [ None for _ in range(6) ]
 
+    def control_reg(self, system):
+        reg = SimpleReg(system, 'mig_control', "MIG control", [
+            RwField('reset', "Reset", self.rst),
+            RoField('calib_done', "Calib Done", self.calib_done),
+        ])
+        reg_inst = reg.gen()
+
+        return reg.bus(), reg_inst
+
     def gen(self):
         INCLK_PERIOD = ((self.MEMCLK_PERIOD * self.CLKFBOUT_MULT) /
                           (self.DIVCLK_DIVIDE * self.CLKOUT0_DIVIDE * 2))
@@ -235,15 +273,13 @@ class Mig(object):
 
         RST_SYNC_NUM = 25
 
-        if isinstance(self.rst, SignalType):
-            rst = self.rst
-        else:
-            rst = False
-        print "rst is", rst
-
         insts = []
         pll_adv_inst = pll_adv(
             'mig_pll_adv_inst',
+
+            # Do not pass the reset the PLL, since PLL is used to
+            # generate the SoC clock resetting it will break things
+            rst                 = 0,
 
             DIVCLK_DIVIDE       = self.DIVCLK_DIVIDE,
             CLKFBOUT_MULT       = self.CLKFBOUT_MULT,
@@ -422,22 +458,24 @@ class Mig(object):
 
         return insts
 
-def gen(mig):
+def gen(mig, port):
     return mig.gen()
 
 def main():
     from myhdl import toVerilog
+    from util import rename_interface
+    from clk import Clk
 
-    mig = Mig()
+    clk = Clk(133E6)
 
-    clk = Signal(False)
+    mig = Mig(clk)
+    rename_interface(mig, None)
 
-    cmd = MigCmdPort(clk)
-    wr = MigWrPort(clk)
-    rd = MigRdPort(clk)
-    mig.ports[0] = [ cmd, wr, rd ]
+    port = MigPort(mig, mig.fast_clk)
+    mig.ports[0] = port
+    rename_interface(port, 'p0')
 
-    toVerilog(gen, mig)
+    toVerilog(gen, mig, port)
 
     print
     print open('gen.v', 'r').read()

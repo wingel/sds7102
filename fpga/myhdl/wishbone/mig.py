@@ -198,15 +198,25 @@ class Mig(object):
         self.CLKFBOUT_MULT = 6    # 133 / 1 * 6 = 800 MHz
         self.CLKFBOUT_MULT = 5    # 133 / 1 * 5 = 666 MHz
 
-        self.CLKOUT0_DIVIDE = 1
-        self.CLKOUT1_DIVIDE = 1
-        self.CLKOUT2_DIVIDE = 20
-        self.CLKOUT3_DIVIDE = 10
+        self.CLK_2X_DIVIDE = 1
+
+        self.FAST_CLK_DIVIDE = 20
+
+        self.MCB_UI_CLK_DIVIDE = 2 * self.CLKFBOUT_MULT
+
+        self.SOC_CLK_DIVIDE = self.CLKFBOUT_MULT
 
         self.calib_done = Signal(False)
 
+        self.fast_clk = Signal(False)
+        self.fast_clk_locked = Signal(False)
+
+        self.mcb_ui_clk = Signal(False)
+        self.mcb_ui_clk_locked = Signal(False)
+
         self.soc_clk = Signal(False)
         self.soc_clk_b = Signal(False)
+        self.soc_clk_locked = Signal(False)
 
         self.mcbx_dram_clk = Signal(False)
         self.mcbx_dram_clk_n = Signal(False)
@@ -240,6 +250,9 @@ class Mig(object):
         reg = SimpleReg(system, 'mig_control', "MIG control", [
             RwField('reset', "Reset", self.rst),
             RoField('calib_done', "Calib Done", self.calib_done),
+            RoField('mcb_ui_clk_locked', "MCB UI Clock Locked", self.mcb_ui_clk_locked),
+            RoField('fast_clk_locked', "Fast Clock Locked", self.fast_clk_locked),
+            RoField('soc_clk_locked', "SoC Clock Locked", self.soc_clk_locked),
         ])
         reg_inst = reg.gen()
 
@@ -247,24 +260,17 @@ class Mig(object):
 
     def gen(self):
         INCLK_PERIOD = ((self.MEMCLK_PERIOD * self.CLKFBOUT_MULT) /
-                          (self.DIVCLK_DIVIDE * self.CLKOUT0_DIVIDE * 2))
+                        (self.DIVCLK_DIVIDE * self.CLK_2X_DIVIDE * 2))
 
         CLK_PERIOD_NS = INCLK_PERIOD / 1000.0
-
-        CLK_2X_DIVIDE = 1
-        C_CLKOUT2_DIVIDE = 20
-        C_CLKOUT3_DIVIDE = 10
-        SOC_CLK_DIVIDE = self.CLKFBOUT_MULT
 
         clkfbout_clkfbin = Signal(False)
         clk_2x_0 = Signal(False)
         clk_2x_180 = Signal(False)
 
-        clk0_bufg = Signal(False)
-        clk0_bufg_in = Signal(False)
+        fast_clk_bufg_in = Signal(False)
 
-        mcb_drp_clk = Signal(False)
-        mcb_drp_clk_bufg_in = Signal(False)
+        mcb_ui_clk_bufg_in = Signal(False)
 
         soc_clk_bufg_in = Signal(False)
         soc_clk_b_bufg_in = Signal(False)
@@ -292,24 +298,27 @@ class Mig(object):
             clkfbout		= clkfbout_clkfbin,
 
             clkout0		= clk_2x_0,
-            CLKOUT0_DIVIDE      = CLK_2X_DIVIDE,
+            CLKOUT0_DIVIDE      = self.CLK_2X_DIVIDE,
             CLKOUT0_PHASE       = 0.000,
 
             clkout1		= clk_2x_180,
-            CLKOUT1_DIVIDE      = CLK_2X_DIVIDE,
+            CLKOUT1_DIVIDE      = self.CLK_2X_DIVIDE,
             CLKOUT1_PHASE       = 180.000,
 
-            clkout2		= clk0_bufg_in,
-            clkout3		= mcb_drp_clk_bufg_in,
-            CLKOUT2_DIVIDE      = C_CLKOUT2_DIVIDE,
-            CLKOUT3_DIVIDE      = C_CLKOUT3_DIVIDE,
+            clkout2		= mcb_ui_clk_bufg_in,
+            CLKOUT2_DIVIDE      = self.MCB_UI_CLK_DIVIDE,
+            CLKOUT2_PHASE       = 0.000,
+
+            clkout3		= fast_clk_bufg_in,
+            CLKOUT3_DIVIDE      = self.FAST_CLK_DIVIDE,
+            CLKOUT3_PHASE       = 0.000,
 
             clkout4		= soc_clk_bufg_in,
-            CLKOUT4_DIVIDE      = SOC_CLK_DIVIDE,
+            CLKOUT4_DIVIDE      = self.SOC_CLK_DIVIDE,
             CLKOUT4_PHASE       = 0.000,
 
             clkout5             = soc_clk_b_bufg_in,
-            CLKOUT5_DIVIDE      = SOC_CLK_DIVIDE,
+            CLKOUT5_DIVIDE      = self.SOC_CLK_DIVIDE,
             CLKOUT5_PHASE       = 180.000,
 
             locked		= locked,
@@ -318,16 +327,21 @@ class Mig(object):
             )
         insts.append(pll_adv_inst)
 
-        clk0_bufg_inst = bufg('clk0_bufg_inst', clk0_bufg_in, clk0_bufg)
-        insts.append(clk0_bufg_inst)
+        mcb_ui_clk_bufg_inst = bufgce('mcb_ui_clk_bufg_inst',
+                                      mcb_ui_clk_bufg_in, self.mcb_ui_clk,
+                                      locked)
+        insts.append(mcb_ui_clk_bufg_inst)
 
-        mcb_drp_clk_bufg_inst = bufgce('mcb_drp_clk_bufg_inst', mcb_drp_clk_bufg_in, mcb_drp_clk, locked)
-        insts.append(mcb_drp_clk_bufg_inst)
+        fast_clk_bufg_inst = bufg('fast_clk_bufg_inst',
+                                    fast_clk_bufg_in, self.fast_clk)
+        insts.append(fast_clk_bufg_inst)
 
-        soc_clk_bufg_inst = bufgce('soc_clk_bufg_inst', soc_clk_bufg_in, self.soc_clk, locked)
+        soc_clk_bufg_inst = bufg('soc_clk_bufg_inst',
+                                   soc_clk_bufg_in, self.soc_clk)
         insts.append(soc_clk_bufg_inst)
 
-        soc_clk_b_bufg_inst = bufgce('soc_clk_b_bufg_inst', soc_clk_b_bufg_in, self.soc_clk_b, locked)
+        soc_clk_b_bufg_inst = bufg('soc_clk_b_bufg_inst',
+                                     soc_clk_b_bufg_in, self.soc_clk_b)
         insts.append(soc_clk_b_bufg_inst)
 
         sysclk_2x = Signal(False)
@@ -340,7 +354,7 @@ class Mig(object):
 
         bufpll_mcb_inst = bufpll_mcb(
             'bufpll_mcb_inst',
-            gclk = mcb_drp_clk,
+            gclk = self.mcb_ui_clk,
             pllin0 = clk_2x_0,
             pllin1 = clk_2x_180,
             locked = locked,
@@ -353,21 +367,23 @@ class Mig(object):
             )
         insts.append(bufpll_mcb_inst)
 
-        powerup_pll_locked = Signal(False)
-
-        @always_seq (mcb_drp_clk.posedge, self.rst)
-        def pll_locked_inst():
+        @always_seq (self.mcb_ui_clk.posedge, self.rst)
+        def mcb_ui_clk_locked_inst():
             if bufpll_mcb_locked:
-                powerup_pll_locked.next = 1
-        insts.append(pll_locked_inst)
+                self.mcb_ui_clk_locked.next = 1
+        insts.append(mcb_ui_clk_locked_inst)
 
-        syn_clk0_powerup_pll_locked = Signal(False)
-
-        @always_seq (clk0_bufg.posedge, self.rst)
-        def syn_clk0_locked_inst():
+        @always_seq (self.fast_clk.posedge, self.rst)
+        def fast_clk_locked_inst():
             if bufpll_mcb_locked:
-                syn_clk0_powerup_pll_locked.next = 1
-        insts.append(syn_clk0_locked_inst)
+                self.fast_clk_locked.next = 1
+        insts.append(fast_clk_locked_inst)
+
+        @always_seq (self.soc_clk.posedge, self.rst)
+        def soc_clk_locked_inst():
+            if bufpll_mcb_locked:
+                self.soc_clk_locked.next = 1
+        insts.append(soc_clk_locked_inst)
 
         kwargs = {}
 
@@ -408,7 +424,7 @@ class Mig(object):
 
                                  sys_rst = self.rst,
 
-                                 ui_clk = mcb_drp_clk,
+                                 ui_clk = self.mcb_ui_clk,
 
                                  sysclk_2x = sysclk_2x,
                                  sysclk_2x_180 = sysclk_2x_180,

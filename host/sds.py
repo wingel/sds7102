@@ -17,7 +17,8 @@ GPH = tuple([ 224 + i for i in range(16) ])
 class SDS(object):
     def __init__(self, host):
         self.p = Popen([ 'ssh', host, './sds-server' ],
-                       stdin = PIPE, stdout = PIPE, stderr = sys.stderr)
+                       stdin = PIPE, stdout = PIPE, stderr = sys.stderr,
+                       universal_newlines = False)
 
         self.fi = self.p.stdout
         self.fo = self.p.stdin
@@ -89,6 +90,17 @@ class SDS(object):
         for i in range(count):
             s = self.fi.readline()
             a[i] = int(s, 0)
+
+        return a
+
+    def read_ddr_b(self, addr, count):
+        cmd = 'read_ddr_b 0x%x %u' % (addr, count)
+        if self.verbose:
+            print cmd
+        self.fo.write(cmd + '\n')
+        self.fo.flush()
+
+        a = numpy.fromfile(self.fi, dtype = numpy.uint32, count = count)
 
         return a
 
@@ -230,10 +242,13 @@ class SDS(object):
         self.write_reg(0x230, 1)
         time.sleep(0.1)
 
-        data = self.read_ddr(0, count / 2)
+        t0 = time.time()
+        data = self.read_ddr_b(0, count / 2)
+        t = time.time()
+        print "capture time", t - t0
 
         if 0:
-            data2 = self.read_ddr(0, count)
+            data2 = self.read_ddr_b(0, count / 2)
             assert all(data == data2)
 
         print "capture_status 0x%08x" % self.read_reg(0x230)

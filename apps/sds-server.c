@@ -447,6 +447,102 @@ int main(int argc, char *argv[])
                 goto err;
             }
 	}
+	else if (!strcasecmp(start, "read_ddr_b"))
+	{
+	    uint32_t addr;
+	    unsigned count;
+	    unsigned n, i;
+            uint32_t v;
+
+	    start = tok(&p);
+	    if (!*start)
+	    {
+		printf("error: read_ddr needs an address\n");
+		goto err;
+	    }
+
+	    addr = strtoul(start, &end, 0);
+	    if (*end)
+	    {
+		printf("error: invalid address \"%s\"\n", start);
+		goto err;
+	    }
+
+	    start = tok(&p);
+	    if (!*start)
+		count =1;
+	    else
+	    {
+		count = strtoul(start, &end, 0);
+		if (*end || count > 64 * 1024 * 1024)
+		{
+		    printf("error: invalid count \"%s\"\n", start);
+		    goto err;
+		}
+	    }
+
+            while (count)
+            {
+                n = count;
+                if (n > 64)
+                    n = 64;
+
+                v = soc[0x211];
+                if (!((v >> 8) & 1))
+                {
+                    fprintf(stderr, "read fifo not empty, status 0x%08x\n", (unsigned)v);
+                    goto err;
+                }
+
+                v = addr | ((n-1)<<24) | (1<<30); /* read */
+                // ffprintf(stderr, stderr, "0x200 <- 0x%08x\n", (unsigned)v);
+                soc[0x210] = v;
+
+                for (i = 10000; i; i--)
+                {
+                    v = soc[0x211];
+
+                    if (((v >> 0) & 0x7f) == n)
+                        break;
+                }
+                if (!i)
+                {
+                    fprintf(stderr, "read timeout, status 0x%08x\n", (unsigned)v);
+                    goto err;
+                }
+
+                if (((v >> 11) & 1))
+                {
+                    fprintf(stderr, "read overflow, status 0x%08x\n", (unsigned)v);
+                    goto err;
+                }
+
+                if (((v >> 10) & 1))
+                {
+                    fprintf(stderr, "read error, status 0x%08x\n", (unsigned)v);
+                    goto err;
+                }
+
+                /* empty FIFO */
+                for (i = 0; i < n; i++)
+                {
+                    volatile uint32_t t = soc[0x218];
+                    buf[i] = t;
+                }
+
+                fwrite(buf, sizeof(uint32_t), n, stdout);
+
+                addr += n;
+                count -= n;
+            }
+
+            v = soc[0x211];
+            if (!((v >> 8) & 1))
+            {
+                fprintf(stderr, "read fifo not empty after, status 0x%08x\n", (unsigned)v);
+                goto err;
+            }
+	}
 	else if (!strcasecmp(start, "set_gpio"))
 	{
 	    unsigned pin;

@@ -312,11 +312,11 @@ def top(din, init_b, cclk,
         mig_chunk = 32
 
         adc_mig_port_0 = MigPort(mig, soc_system.CLK)
-        mig.ports[2] = adc_mig_port_0
+        mig.ports[4] = adc_mig_port_0
 
-        mig_status_2_bus, mig_status_2_inst = adc_mig_port_0.status_reg(soc_system, 2)
-        sm.add(mig_status_2_bus, addr = 0x220)
-        insts.append(mig_status_2_inst)
+        mig_status_4_bus, mig_status_4_inst = adc_mig_port_0.status_reg(soc_system, 4)
+        sm.add(mig_status_4_bus, addr = 0x220)
+        insts.append(mig_status_4_inst)
 
         mig_sampler_0 = MigSampler(sample_clk = adc_clk,
                                    sample_data = mig_data_0,
@@ -330,11 +330,11 @@ def top(din, init_b, cclk,
         insts.append(mig_sampler_0.gen())
 
         adc_mig_port_1 = MigPort(mig, soc_system.CLK)
-        mig.ports[3] = adc_mig_port_1
+        mig.ports[5] = adc_mig_port_1
 
-        mig_status_3_bus, mig_status_3_inst = adc_mig_port_1.status_reg(soc_system, 3)
-        sm.add(mig_status_3_bus, addr = 0x221)
-        insts.append(mig_status_3_inst)
+        mig_status_5_bus, mig_status_5_inst = adc_mig_port_1.status_reg(soc_system, 5)
+        sm.add(mig_status_5_bus, addr = 0x221)
+        insts.append(mig_status_5_inst)
 
         mig_sampler_1 = MigSampler(sample_clk = adc_clk,
                                    sample_data = mig_data_1,

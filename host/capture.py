@@ -11,20 +11,32 @@ from convert import convert, save, display
 def main():
     sds = SDS(sys.argv[1])
 
-    sds.odd_relay(0)
+    high = 1
+
+    sds.odd_relay(1)
     sds.ext_relay(0)
 
-    sds.atten(0, 1)
+    if high:
+        sds.atten(0, 1)
+    else:
+        sds.atten(0, 1)
+
     sds.atten(1, 1)
 
     if 1:
         # Set the vertical shift for channel 1 and 2
-        sds.dac8532(0, 0x7800)
+        if high:
+            sds.dac8532(0, 0x9150)
+        else:
+            sds.dac8532(0, 0x7800)
         sds.dac8532(1, 0x6c00)
 
     if 1:
         # Set the gain for channel 1 and 2
-        sds.lmh6518(0, 0xc9)
+        if high:
+            sds.lmh6518(0, 0xc1)
+        else:
+            sds.lmh6518(0, 0xc9)
         sds.lmh6518(1, 0xca)
 
     if 1:
@@ -67,7 +79,8 @@ def main():
     else:
         data = sds.mig_capture(512 * 1024)
 
-    numpy.savetxt('data.txt', data, fmt = '%u', delimiter = ' ')
+    data.tofile('capture.bin')
+
     samples = convert(data)
 
     if 'DISPLAY' in os.environ:

@@ -4,7 +4,7 @@ import sys
 
 print_values = 0
 
-def convert(a):
+def convert_old(a):
 
     pins = ('B10', 'B12', 'C13', 'B14', 'C11', 'D11', 'F10', 'E13', # DI0..7
             'B15', 'C15', 'D14', 'E15', 'F15', 'G14', 'H15', 'J14', # DId0..7
@@ -159,15 +159,30 @@ def convert(a):
 
     return samples
 
+def convert(a):
+    a = a.view(numpy.uint8)
+
+    s = numpy.reshape(a, (len(a) / 4, 4))
+
+    s0 = numpy.reshape(numpy.dstack((s[:,1], s[:,0])), len(a) / 2)
+    s1 = numpy.reshape(numpy.dstack((s[:,3], s[:,2])), len(a) / 2)
+
+    s = numpy.reshape(numpy.vstack((s0, s1)), (2, len(a) / 2))
+
+    return s
+
+def p(plt, samples):
+    for i, (c, m) in enumerate([ ('r','.'), ('g','.') ]):
+        plt.plot(numpy.array(range(len(samples[i]))), samples[i],
+                 color = c, marker = m, linestyle = '')
+
 def display(samples):
     import os
     import matplotlib.pyplot as plt
 
     fig = plt.figure(1, figsize = (8, 6))
 
-    for i, (c, m) in enumerate([ ('r','.'), ('g','.'), ('b','.'), ('m','.') ]):
-        plt.plot(2 * numpy.array(range(len(samples[i]))) + (i & 1), samples[i],
-                 color = c, marker = m, linestyle = '')
+    p(plt, samples)
 
     plt.show()
 
@@ -178,31 +193,76 @@ def save(fn, samples):
 
     fig = plt.figure(1, figsize = (8, 6))
 
-    for i, (c, m) in enumerate([ ('r','.'), ('g','.'), ('b','.'), ('m','.') ]):
-        plt.plot(2 * numpy.array(range(len(samples[i]))) + (i & 1), samples[i],
-                 color = c, marker = m, linestyle = '')
+    p(plt, samples)
 
     plt.tight_layout()
 
     fig.savefig(fn, dpi = 90)
 
 def main():
-    if 0:
-        a = []
-        for l in open(sys.argv[1]):
-            l = l.strip()
-            if not l or l.startswith('#'):
-                continue
-            parts = l.split()
-            a.append(int(parts[1], 0))
+    a = numpy.fromfile(sys.argv[1], dtype = numpy.uint32)
 
-        a = numpy.array(a)
-        print "#", a
+    samples = convert(a)
 
-    else:
-        a = numpy.loadtxt(sys.argv[1], dtype = numpy.uint32, delimiter = ' ')
+    if 1:
+        from scipy.misc import toimage
+        import PIL
 
-    samples = convert(a[:1000])
+        w = 400
+        h = 256
+
+        data = numpy.zeros((h, w, 3), dtype = numpy.double)
+
+        print samples
+        if 0:
+            samples = numpy.vstack((samples[0,:-20000], samples[1,20000:]))
+            o = 0
+            samples = samples[:,o:o + 400000]
+            print samples
+        elif 0:
+            samples = numpy.vstack((samples[0,:-1000], samples[1,1000:]))
+            o = 254500
+            samples = samples[:,o:o + 4000]
+            print samples
+        elif 1:
+            o = 256950
+            samples = samples[:,o:o + 400]
+            print samples
+
+        scale = float(len(samples[0])) / w
+        intensity = 10.0
+        for c in range(2):
+            last = None
+            for x, v in enumerate(samples[c]):
+                v = 255 - v
+                if last is not None:
+                    s = min(last, v)
+                    e = max(last, v)
+                    if s != e or ( s != 0 and s != 255 ):
+                        d = e - s + 1
+                        if d > 5:
+                            print x, s, e
+                        for i in range(s, e + 1):
+                            data[i, x / scale, c] += intensity / d + intensity / 5
+                else:
+                    data[v, x / scale, c] += intensity + intensity / 5
+                last = v
+
+        data = numpy.log2(data + 1)
+
+        # data = data.astype(numpy.uint8) * 16
+
+        print "max", max(data.reshape(w*h*3))
+
+        img = toimage(data)
+        if 0:
+            if 0:
+                mode = PIL.Image.ANTIALIAS
+            else:
+                mode = PIL.Image.NEAREST
+            img = img.resize((w*2, h*2), mode)
+        img.show()
+        img.save('screen.png')
 
     if 'DISPLAY' in os.environ:
         display(samples)
@@ -215,6 +275,6 @@ if __name__ == '__main__':
     if not sys.argv[0]:
         if 0:
             os.environ['DISPLAY'] = ':0'
-        sys.argv = [ '', '../capture.txt' ]
+        sys.argv = [ '', '../capture.bin' ]
 
     main()

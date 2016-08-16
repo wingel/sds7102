@@ -18,19 +18,20 @@ class SyncFifo(object):
 
         self.factory = factory
 
-        self.RST = rst
-        self.CLK = clk
-
+        self.WR_CLK = clk
+        self.WR_RST = rst
         self.WR = Signal(False)
         self.WR_DATA = Signal(factory)
         self.WR_FULL = Signal(False)
 
+        self.RD_CLK = clk
+        self.RD_RST = rst
         self.RD = Signal(False)
         self.RD_DATA = Signal(factory)
         self.RD_EMPTY = Signal(False)
 
     def gen(self):
-        mem = FifoMem(self.CLK, self.CLK,
+        mem = FifoMem(self.RD_CLK, self.WR_CLK,
                       self.depth, len(self.WR_DATA))
         mem_inst = mem.gen()
 
@@ -45,6 +46,13 @@ class SyncFifo(object):
 
         wr_new = Signal(ptr_init)
 
+        wr_sync_rd_ptr = Signal(ptr_init)
+
+        # I don't think I need this one, but leave it in for th
+        @always_seq(self.WR_CLK.posedge, self.WR_RST)
+        def wr_sync_inst():
+            wr_sync_rd_ptr.next = rd_ptr
+
         @always_comb
         def wr_new_comb():
             wr_new.next = wr_ptr
@@ -54,7 +62,7 @@ class SyncFifo(object):
         @always_comb
         def wr_data_comb():
             mem.WR.next = 0
-            mem.WR_ADDR.next = wr_ptr & ((1<<len(mem.WR_ADDR))-1)
+            mem.WR_ADDR.next = wr_ptr & (self.depth-1)
             mem.WR_DATA.next = self.WR_DATA
             if self.WR:
                 mem.WR.next = 1
@@ -62,10 +70,10 @@ class SyncFifo(object):
         @always_comb
         def wr_full_comb():
             self.WR_FULL.next = 0
-            if wr_new ^ self.depth == rd_ptr:
+            if wr_new ^ self.depth == wr_sync_rd_ptr:
                 self.WR_FULL.next = 1
 
-        @always_seq(self.CLK.posedge, self.RST)
+        @always_seq(self.WR_CLK.posedge, self.WR_RST)
         def wr_seq():
             wr_ptr.next = wr_new
 
@@ -76,6 +84,10 @@ class SyncFifo(object):
 
         rd_sync_wr_ptr = Signal(ptr_init)
 
+        @always_seq(self.RD_CLK.posedge, self.RD_RST)
+        def rd_sync_inst():
+            rd_sync_wr_ptr.next = wr_ptr
+
         @always_comb
         def rd_new_comb():
             rd_new.next = rd_ptr
@@ -85,7 +97,7 @@ class SyncFifo(object):
         @always_comb
         def rd_data_comb():
             mem.RD.next = 1
-            mem.RD_ADDR.next = rd_new & ((1<<len(mem.RD_ADDR))-1)
+            mem.RD_ADDR.next = rd_new & (self.depth-1)
             self.RD_DATA.next = mem.RD_DATA
 
         @always_comb
@@ -94,10 +106,8 @@ class SyncFifo(object):
             if rd_new == rd_sync_wr_ptr:
                 self.RD_EMPTY.next = 1
 
-        @always_seq(self.CLK.posedge, self.RST)
+        @always_seq(self.RD_CLK.posedge, self.RD_RST)
         def rd_seq():
             rd_ptr.next = rd_new
-
-            rd_sync_wr_ptr.next = wr_ptr
 
         return instances()

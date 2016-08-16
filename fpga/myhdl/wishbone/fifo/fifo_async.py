@@ -25,26 +25,28 @@ class AsyncFifo(object):
 
         # These signals are in the WR_CLK domain
         self.WR_CLK = wr_clk
+        if self.RST is None:
+            self.WR_RST = None
+        else:
+            self.WR_RST = ResetSignal(True, True, False)
         self.WR = Signal(False)
         self.WR_DATA = Signal(factory)
         self.WR_FULL = Signal(False)
 
         # These signals are in the RD_CLK domain
         self.RD_CLK = rd_clk
+        if self.RST is None:
+            self.RD_RST = None
+        else:
+            self.RD_RST = ResetSignal(True, True, False)
         self.RD = Signal(False)
         self.RD_DATA = Signal(factory)
         self.RD_EMPTY = Signal(False)
 
     def gen(self):
-        if self.RST is None:
-            wr_rst = None
-            rd_rst = None
-        else:
-            wr_rst = ResetSignal(True, True, False)
-            rd_rst = ResetSignal(True, True, False)
-
-            wr_rst_inst = rst_sync(self.WR_CLK, self.RST, wr_rst)
-            rd_rst_inst = rst_sync(self.RD_CLK, self.RST, rd_rst)
+        if self.RST is not None:
+            wr_rst_inst = rst_sync(self.WR_CLK, self.RST, self.WR_RST)
+            rd_rst_inst = rst_sync(self.RD_CLK, self.RST, self.RD_RST)
 
         mem = FifoMem(self.WR_CLK, self.RD_CLK, self.depth, len(self.WR_DATA))
         mem_inst = mem.gen()
@@ -87,7 +89,7 @@ class AsyncFifo(object):
             if gray_encode(wr_new ^ self.depth) == wr_sync_rd_gray:
                 self.WR_FULL.next = 1
 
-        @always_seq(self.WR_CLK.posedge, wr_rst)
+        @always_seq(self.WR_CLK.posedge, self.WR_RST)
         def wr_seq():
             wr_cur.next = wr_new
             wr_gray.next = gray_encode(wr_new)
@@ -122,52 +124,9 @@ class AsyncFifo(object):
             if gray_encode(rd_new) == rd_sync_wr_gray:
                 self.RD_EMPTY.next = 1
 
-        @always_seq(self.RD_CLK.posedge, rd_rst)
+        @always_seq(self.RD_CLK.posedge, self.RD_RST)
         def rd_seq():
             rd_cur.next = rd_new
             rd_gray.next = gray_encode(rd_new)
-
-        return instances()
-
-class DummyFifo(object):
-    def __init__(self, rst, rd_clk, factory, base, inc):
-        self.factory = factory
-        self.base = base
-        self.inc = inc
-
-        self.RST = rst
-
-        # These signals are in the WR_CLK domain
-        self.WR_CLK = Signal(False)
-        self.WR = Signal(False)
-        self.WR_DATA = Signal(factory)
-        self.WR_FULL = Signal(False)
-
-        # These signals are in the RD_CLK domain
-        self.RD_CLK = rd_clk
-        self.RD = Signal(False)
-        self.RD_DATA = Signal(factory)
-        self.RD_EMPTY = Signal(False)
-
-    def gen(self):
-        if self.RST is None:
-            rd_rst = None
-        else:
-            rd_rst = ResetSignal(True, True, False)
-
-            rd_rst_inst = rst_sync(self.RD_CLK, self.RST, rd_rst)
-
-        cnt = Signal(intbv(self.base)[16:])
-
-        @always_seq(self.RD_CLK.posedge, rd_rst)
-        def rd_seq():
-            if self.RD:
-                cnt.next = cnt + self.inc
-
-        @always_comb
-        def rd_comb():
-            self.RD_DATA.next = cnt & ((1<<len(self.RD_DATA))-1)
-
-            # self.RD_EMPTY.next = self.RD
 
         return instances()

@@ -8,9 +8,9 @@ from myhdl import (toVerilog, Simulation, traceSignals, instance, delay,
 
 from timebase import nsec
 from util import rename_interface
-from fifo_async import AsyncFifo
-from fifo_dummy import DummyFifo
 from fifo_sync import SyncFifo
+from fifo_async import AsyncFifo
+from fifo_dummy import DummyFifo, DummyReadFifo, DummyWriteFifo
 from clk import Clk
 from rst import rstgen
 
@@ -22,27 +22,38 @@ class Harness(object):
 
         self.stimuli = []
 
-        wr_clk = Clk(37E6)
-        self.stimuli.append(wr_clk.gen())
-
         rd_clk = Clk(100E6)
         self.stimuli.append(rd_clk.gen())
+        wr_clk = rd_clk
 
-        rst = ResetSignal(True, True, True)
-        self.stimuli.append(rstgen(rst, 20 * nsec))
+        rst = ResetSignal(True, True, False)
+        self.stimuli.append(rstgen(rst, 20 * nsec, rd_clk))
 
         if 0:
+            rd_clk = Clk(37E6)
+            self.stimuli.append(rd_clk.gen())
+
             fifo = AsyncFifo(rst, wr_clk, rd_clk,
                              intbv(0)[data_width:], fifo_depth)
-        elif 1:
-            rd_clk = wr_clk
 
-            fifo = SyncFifo(rst, rd_clk, intbv(0)[data_width:], fifo_depth)
+        elif 1:
+            rd_fifo = SyncFifo(rst, rd_clk, intbv(0)[data_width:], fifo_depth)
+            wr_fifo = rd_fifo
+
+            self.dut = wr_fifo
+
+        elif 1:
+            rd_fifo = DummyReadFifo(rst, rd_clk, intbv(0)[data_width:],
+                                    count = 4, skip = 1,
+                                    base = 1, increment = 2)
+
+            wr_fifo = DummyWriteFifo(rst, wr_clk, intbv(0)[data_width:],
+                                     count = 3, skip = 2)
+
+            self.dut = wr_fifo
 
         else:
             fifo = DummyFifo(rst, rd_clk, intbv(0)[data_width:], 1, 2)
-
-        self.dut = fifo
 
         @instance
         def writer():
@@ -52,12 +63,12 @@ class Harness(object):
             while 1:
 #                print "WR", hex(v)
 
-                if not fifo.WR_FULL:
-                    fifo.WR.next = 1
-                    fifo.WR_DATA.next = v
+                if not wr_fifo.WR_FULL:
+                    wr_fifo.WR.next = 1
+                    wr_fifo.WR_DATA.next = v
                     yield(wr_clk.posedge)
-                    fifo.WR.next = 0
-                    fifo.WR_DATA.next = 0
+                    wr_fifo.WR.next = 0
+                    wr_fifo.WR_DATA.next = 0
                     v += 1
                 else:
                     yield(wr_clk.posedge)
@@ -76,14 +87,14 @@ class Harness(object):
             yield delay(400 * nsec)
             yield(rd_clk.posedge)
             while 1:
-                if not fifo.RD_EMPTY:
+                if not rd_fifo.RD_EMPTY:
                     yield(delay(1))
-                    v = fifo.RD_DATA
+                    v = rd_fifo.RD_DATA
                     print "RD", hex(v)
-                    fifo.RD.next = 1
+                    rd_fifo.RD.next = 1
                     yield(rd_clk.posedge)
                 else:
-                    fifo.RD.next = 0
+                    rd_fifo.RD.next = 0
                     yield(rd_clk.posedge)
 
                 if 0:
@@ -93,9 +104,9 @@ class Harness(object):
         self.stimuli.append(reader)
 
         # Any parameters you want to have at the top level
-        self.args = rst, wr_clk, rd_clk
+        self.args = rst, rd_clk, wr_clk
 
-    def gen(self, reset, wr_clk, rd_clk):
+    def gen(self, rst, rd_clk, wr_clk):
         # Create anything you want to be inside the DUT here
         return self.dut.gen()
 

@@ -3,7 +3,7 @@ import hacking
 if __name__ == '__main__':
     hacking.reexec_if_needed('test_fifo.py')
 
-from myhdl import Signal, intbv, always
+from myhdl import Signal, intbv, always_seq
 
 class FifoMem(object):
     def __init__(self, wr_clk, rd_clk, addr_depth, data_width):
@@ -25,12 +25,12 @@ class FifoMem(object):
         mem = [ Signal(intbv(0)[self.data_width:])
                 for _ in range(self.addr_depth) ]
 
-        @always(self.WR_CLK.posedge)
+        @always_seq (self.WR_CLK.posedge, None)
         def wr_inst():
             if self.WR:
                 mem[self.WR_ADDR].next = self.WR_DATA
 
-        @always(self.RD_CLK.posedge)
+        @always_seq (self.RD_CLK.posedge, None)
         def rd_inst():
             self.RD_DATA.next = mem[self.RD_ADDR]
 

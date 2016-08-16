@@ -8,7 +8,9 @@ from myhdl import (toVerilog, Simulation, traceSignals, instance, delay,
 
 from timebase import nsec
 from util import rename_interface
-from fifo_async import AsyncFifo, DummyFifo
+from fifo_async import AsyncFifo
+from fifo_dummy import DummyFifo
+from fifo_sync import SyncFifo
 from clk import Clk
 from rst import rstgen
 
@@ -29,9 +31,14 @@ class Harness(object):
         rst = ResetSignal(True, True, True)
         self.stimuli.append(rstgen(rst, 20 * nsec))
 
-        if 1:
+        if 0:
             fifo = AsyncFifo(rst, wr_clk, rd_clk,
                              intbv(0)[data_width:], fifo_depth)
+        elif 1:
+            rd_clk = wr_clk
+
+            fifo = SyncFifo(rst, rd_clk, intbv(0)[data_width:], fifo_depth)
+
         else:
             fifo = DummyFifo(rst, rd_clk, intbv(0)[data_width:], 1, 2)
 

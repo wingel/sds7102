@@ -384,11 +384,16 @@ def main():
         n = 1024
         wr_data = [ random.randrange(1<<32) for _ in range(n) ]
 
-        sds.write_soc_regs(0x8000, wr_data)
+        sds.write_soc_reg(0x109, 1)
+        print "0x%08x" % sds.read_soc_reg(0x109)
+        time.sleep(1)
+        sds.write_soc_reg(0x109, 0)
+        print "0x%08x" % sds.read_soc_reg(0x109)
+
         rd_data = sds.read_soc_regs(0x8000, n)
-        assert all(wr_data == rd_data)
-        rd_data = sds.read_soc_regs(0xc000, n)
-        assert all(wr_data == rd_data)
+        assert all(rd_data)
+
+        print rd_data
 
 if __name__ == '__main__':
     main()

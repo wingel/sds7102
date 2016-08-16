@@ -91,7 +91,6 @@ def top(din, init_b, cclk,
         sr_inst = sr.gen()
         insts.append(sr_inst)
         sm.add(sr.bus0(), addr = 0x8000)
-        sm.add(sr.bus1(), addr = 0xc000)
 
     if 1:
         # A read only area which returns predictable patterns
@@ -216,6 +215,38 @@ def top(din, init_b, cclk,
             led_green.next = led_green_tmp
             led_white.next = led_white_tmp
         insts.append(led_inst)
+
+    ####################################################################
+    # Test code for dual port RAM
+
+    if 1:
+        dp_test_active = Signal(False)
+
+        dp_test_reg = SimpleReg(soc_system, 'dp', "dual port ram test", [
+            SimpleRwField('active', "active", dp_test_active),
+            ])
+        sm.add(dp_test_reg.bus(), addr = 0x109)
+        insts.append(dp_test_reg.gen())
+
+        dp_test_bus = sr.bus1()
+
+        dp_test_cnt = Signal(intbv(0)[32:])
+        @always_seq (soc_system.CLK.posedge, soc_system.RST)
+        def dp_test_inst():
+            dp_test_bus.WR.next = 0
+            dp_test_bus.WR_DATA.next = 0
+
+            if dp_test_active:
+                dp_test_bus.ADDR.next = dp_test_cnt & ((1<<len(dp_test_bus.ADDR))-1)
+
+                dp_test_bus.WR.next = 1
+                dp_test_bus.WR_DATA.next = dp_test_cnt & ((1<<len(dp_test_bus.WR_DATA))-1)
+
+                dp_test_cnt.next = dp_test_cnt + 1
+
+            else:
+                dp_test_cnt.next = 0
+        insts.append(dp_test_inst)
 
     ####################################################################
     # ADC bus

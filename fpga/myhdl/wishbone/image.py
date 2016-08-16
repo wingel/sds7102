@@ -19,7 +19,7 @@ from hybrid_counter import HybridCounter
 from util import tristate
 from regfile import RegFile, Field, RoField, RwField, Port
 from ddr import Ddr, DdrBus, ddr_connect
-from simplebus import SimpleBus, SimpleMux, SimpleAlgo, SimpleRam
+from simplebus import SimpleBus, SimpleMux, SimpleAlgo, SimpleRam, SimpleDpRam
 from sampler import Sampler, MigSampler, FifoSampler, MigFifoWriter
 from shifter import Shifter, ShifterBus
 from ram import Ram
@@ -87,10 +87,11 @@ def top(din, init_b, cclk,
 
     if 1:
         # Some RAM
-        sr = SimpleRam(soc_system, 1024, 32)
+        sr = SimpleDpRam(soc_system, soc_system, 1024, 32)
         sr_inst = sr.gen()
         insts.append(sr_inst)
-        sm.add(sr.bus(), addr = 0x8000)
+        sm.add(sr.bus0(), addr = 0x8000)
+        sm.add(sr.bus1(), addr = 0xc000)
 
     if 1:
         # A read only area which returns predictable patterns

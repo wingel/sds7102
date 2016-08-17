@@ -72,9 +72,9 @@ class SimpleBus(object):
         self.data_width = data_width
         self.align = align
 
-        addr_width = len(intbv(0, 0, addr_depth))
+        self.addr_width = len(intbv(0, 0, addr_depth))
 
-        self.ADDR = Signal(intbv(0)[addr_width:])
+        self.ADDR = Signal(intbv(0)[self.addr_width:])
 
         self.WR = Signal(False)
         self.WR_DATA = Signal(intbv(0)[data_width:])

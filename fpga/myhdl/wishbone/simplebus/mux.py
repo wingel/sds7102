@@ -33,6 +33,7 @@ class SimpleMux(object):
         else:
             for slave in slaves:
                 self.add_one(slave, addr, align, pad)
+                addr = self.addr
 
     def add_one(self, slave, addr = None, align = None, pad = None):
         # We can't add more slaves if we have created our bus

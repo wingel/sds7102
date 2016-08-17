@@ -381,19 +381,54 @@ def main():
     # sds.capture(16)
 
     if 1:
-        n = 1024
-        wr_data = [ random.randrange(1<<32) for _ in range(n) ]
+        n = 256
+        rd_data = sds.read_soc_regs(0x8000, n)
+        print rd_data
 
-        sds.write_soc_reg(0x109, 1)
-        print "0x%08x" % sds.read_soc_reg(0x109)
-        time.sleep(1)
-        sds.write_soc_reg(0x109, 0)
-        print "0x%08x" % sds.read_soc_reg(0x109)
+        print "0x120 -> 0x%08x" % sds.read_soc_reg(0x120)
+        print "0x121 -> 0x%08x" % sds.read_soc_reg(0x121)
+        print "0x122 -> 0x%08x" % sds.read_soc_reg(0x122)
+
+        zeros = [ 0 ] * 1024
+        sds.write_soc_regs(0x8000, zeros)
+
+        n = 64
+        rd_data = sds.read_soc_regs(0x8000, n)
+        print rd_data
+
+        wr_data = [ random.randrange(100) for _ in range(16) ]
+        sds.write_soc_regs(0x8010, wr_data)
+
+        print wr_data
 
         rd_data = sds.read_soc_regs(0x8000, n)
-        assert all(rd_data)
-
         print rd_data
+
+        assert all(rd_data[0x10:0x10 + len(wr_data)] == wr_data)
+
+        if 1:
+            sds.write_soc_reg(0x120, 0x28)
+            sds.write_soc_reg(0x121, 0x14)
+
+            print "0x120 -> 0x%08x" % sds.read_soc_reg(0x120)
+            print "0x121 -> 0x%08x" % sds.read_soc_reg(0x121)
+
+            sds.write_soc_reg(0x122, 0x8)
+
+            print "0x120 -> 0x%08x" % sds.read_soc_reg(0x120)
+            print "0x121 -> 0x%08x" % sds.read_soc_reg(0x121)
+            print "0x122 -> 0x%08x" % sds.read_soc_reg(0x122)
+
+            time.sleep(1)
+
+            print "0x120 -> 0x%08x" % sds.read_soc_reg(0x120)
+            print "0x121 -> 0x%08x" % sds.read_soc_reg(0x121)
+            print "0x122 -> 0x%08x" % sds.read_soc_reg(0x122)
+
+            rd_data = sds.read_soc_regs(0x8000, n)
+            print rd_data
+
+            assert all(rd_data[0x28 : 0x28 + 0x8] == wr_data[4:4+8])
 
 if __name__ == '__main__':
     main()

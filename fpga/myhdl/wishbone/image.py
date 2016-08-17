@@ -19,8 +19,11 @@ from hybrid_counter import HybridCounter
 from util import tristate
 from regfile import RegFile, Field, RoField, RwField, Port
 from ddr import Ddr, DdrBus, ddr_connect
-from simplebus import SimpleBus, SimpleMux, SimpleAlgo, SimpleRam, SimpleDpRam
+from simplebus import (SimpleBus, SimpleMux, SimpleAlgo,
+                       SimpleRam, SimpleDpRam,
+                       SimpleFifoAdapter, FifoRam)
 from sampler import Sampler, MigSampler, FifoSampler, MigFifoWriter
+from fifo import SyncFifo, AsyncFifo, DummyReadFifo, DummyWriteFifo
 from shifter import Shifter, ShifterBus
 from ram import Ram
 from mig import Mig, MigPort, mig_with_tb
@@ -84,13 +87,6 @@ def top(din, init_b, cclk,
     soc_system = System(soc_clk, None)
 
     sm = SimpleMux(soc_system)
-
-    if 1:
-        # Some RAM
-        sr = SimpleDpRam(soc_system, soc_system, 1024, 32)
-        sr_inst = sr.gen()
-        insts.append(sr_inst)
-        sm.add(sr.bus0(), addr = 0x8000)
 
     if 1:
         # A read only area which returns predictable patterns
@@ -217,36 +213,21 @@ def top(din, init_b, cclk,
         insts.append(led_inst)
 
     ####################################################################
-    # Test code for dual port RAM
+    # Test code for FIFO RAM
 
     if 1:
-        dp_test_active = Signal(False)
+        wr_fifo = SyncFifo(None, soc_clk, intbv(0)[32:], 4)
+        insts.append(wr_fifo.gen())
 
-        dp_test_reg = SimpleReg(soc_system, 'dp', "dual port ram test", [
-            SimpleRwField('active', "active", dp_test_active),
-            ])
-        sm.add(dp_test_reg.bus(), addr = 0x109)
-        insts.append(dp_test_reg.gen())
+        rd_fifo = wr_fifo
 
-        dp_test_bus = sr.bus1()
+        fifo_ram = FifoRam('fifo_ram', soc_system, wr_fifo, rd_fifo, 1024, 32)
 
-        dp_test_cnt = Signal(intbv(0)[32:])
-        @always_seq (soc_system.CLK.posedge, soc_system.RST)
-        def dp_test_inst():
-            dp_test_bus.WR.next = 0
-            dp_test_bus.WR_DATA.next = 0
+        insts.append(fifo_ram.regs_gen())
+        sm.add(fifo_ram.regs_bus(), addr = 0x120)
 
-            if dp_test_active:
-                dp_test_bus.ADDR.next = dp_test_cnt & ((1<<len(dp_test_bus.ADDR))-1)
-
-                dp_test_bus.WR.next = 1
-                dp_test_bus.WR_DATA.next = dp_test_cnt & ((1<<len(dp_test_bus.WR_DATA))-1)
-
-                dp_test_cnt.next = dp_test_cnt + 1
-
-            else:
-                dp_test_cnt.next = 0
-        insts.append(dp_test_inst)
+        insts.append(fifo_ram.gen())
+        sm.add(fifo_ram.bus(), addr = 0x8000)
 
     ####################################################################
     # ADC bus
@@ -303,7 +284,7 @@ def top(din, init_b, cclk,
         adc_capture_sync_inst = syncro(adc_clk, adc_capture, adc_capture_sync)
         insts.append(adc_capture_sync_inst)
 
-    if 1:
+    if 0:
         adc_sampler_0 = Sampler(addr_depth = 1024,
                                 sample_clk = adc_clk,
                                 sample_data = adc_dat_0,

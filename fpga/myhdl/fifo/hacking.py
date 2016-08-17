@@ -3,7 +3,7 @@ def run_as_module(m):
     import sys
     import os
 
-    print "hacking.run_as_module", (sys.argv[0], __package__)
+    print "fifo.run_as_module", (sys.argv[0], __package__)
 
     if not __package__:
         p = os.path.dirname(sys.argv[0])

@@ -1,9 +1,16 @@
 #! /usr/bin/python
-from timebase import nsec
+from __future__ import absolute_import
+
+if __name__ == '__main__':
+    import hacking
+    hacking.run_as_module('common.test_system')
+
 from myhdl import ResetSignal
-from clk import Clk
-from rst import rstgen
-from system import System
+
+from .timebase import nsec
+from .clk import Clk
+from .rst import rstgen
+from .system import System
 
 def create_system(clk_freq = 100E6, reset_duration = 99 * nsec):
     insts = []

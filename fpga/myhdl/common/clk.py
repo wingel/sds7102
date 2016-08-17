@@ -1,6 +1,13 @@
 #! /usr/bin/python
+from __future__ import absolute_import
+
+if __name__ == '__main__':
+    import hacking
+    hacking.run_as_module('common.clk')
+
 from myhdl import Signal, SignalType, instance, delay
-from timebase import sec
+
+from .timebase import sec
 
 def clkgen(clk, freq):
     halfperiod = sec / float(freq) / 2

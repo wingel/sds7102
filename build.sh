@@ -27,10 +27,10 @@ if [ -z "$XILINX" ]; then
     echo 1>&2 "XILINX environment variable is not set, using prebuilt FPGA image"
     fpga_image=misc/sds7102.bin
 else
-    fpga_image=fpga/myhdl/wishbone/xilinx/sds7102.bin
+    fpga_image=fpga/myhdl/xilinx/sds7102.bin
 
     if [ ! -f "$fpga_image" ]; then
-        (cd fpga/myhdl/wishbone && ./image.py || exit 1)
+        (cd fpga/myhdl && ./image.py || exit 1)
     fi
     [ -f "$fpga_image" ]
 fi

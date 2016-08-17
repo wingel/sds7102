@@ -129,6 +129,9 @@ class FifoSampler(object):
 
         return sample_seq
 
+# This one could actually be split into two parts, one part that does
+# the writing and another part that writes the command and address
+# whenever the fifo becomes full enough
 class MigFifoWriter(object):
     def __init__(self, system, fifo, port, enable, base, chunk, stride):
         self.system = system

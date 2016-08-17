@@ -26,7 +26,7 @@ from sampler import Sampler, MigSampler, FifoSampler, MigFifoWriter
 from fifo import SyncFifo, AsyncFifo, DummyReadFifo, DummyWriteFifo
 from shifter import Shifter, ShifterBus
 from ram import Ram
-from mig import Mig, MigPort, mig_with_tb
+from mig import Mig, MigPort, mig_with_tb, MigReaderAddresser, MigReader
 from frontpanel import FrontPanel
 
 from simplebus import SimpleReg
@@ -216,10 +216,11 @@ def top(din, init_b, cclk,
     # Test code for FIFO RAM
 
     if 1:
-        wr_fifo = SyncFifo(None, soc_clk, intbv(0)[32:], 4)
-        insts.append(wr_fifo.gen())
+        rd_fifo = SyncFifo(None, soc_clk, intbv(0)[32:], 4)
+        insts.append(rd_fifo.gen())
 
-        rd_fifo = wr_fifo
+        wr_fifo = DummyWriteFifo(None, soc_clk, intbv(0)[32:])
+        insts.append(wr_fifo.gen())
 
         fifo_ram = FifoRam('fifo_ram', soc_system, wr_fifo, rd_fifo, 1024, 32)
 
@@ -228,6 +229,28 @@ def top(din, init_b, cclk,
 
         insts.append(fifo_ram.gen())
         sm.add(fifo_ram.bus(), addr = 0x8000)
+
+        mig_rd_port = MigPort(mig, soc_system.CLK)
+        mig.ports[2] = mig_rd_port
+
+        mig_status_2_bus, mig_status_2_inst = mig_rd_port.status_reg(soc_system, 2)
+        sm.add(mig_status_2_bus, addr = 0x134)
+        insts.append(mig_status_2_inst)
+
+        mig_count_2_bus, mig_count_2_inst = mig_rd_port.count_reg(soc_system, 2)
+        sm.add(mig_count_2_bus, addr = 0x135)
+        insts.append(mig_count_2_inst)
+
+        mig_reader_addresser = MigReaderAddresser('mig_reader', soc_system, mig_rd_port)
+
+        insts.append(mig_reader_addresser.regs_gen())
+        sm.add(mig_reader_addresser.regs_bus(), addr = 0x130)
+
+        mig_reader_addresser_inst = mig_reader_addresser.gen(mig_rd_port)
+        insts.append(mig_reader_addresser_inst)
+
+        mig_reader = MigReader(mig_rd_port, rd_fifo)
+        insts.append(mig_reader.gen())
 
     ####################################################################
     # ADC bus

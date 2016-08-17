@@ -6,7 +6,7 @@ if __name__ == '__main__':
 from myhdl import Signal, ResetSignal, SignalType, instance, always_comb, always_seq, intbv, instances
 
 from spartan6 import pll_adv, bufg, bufgce, bufpll_mcb, mcb_ui_top
-from simplebus import SimpleReg, RwField, RoField, DummyField
+from simplebus import SimpleReg, Port, Field, RwField, RoField, DummyField
 
 def mig_with_tb(sys_rst_i, sys_clk_p, sys_clk_n,
                 calib_done, error,
@@ -162,14 +162,16 @@ class MigPort(object):
 
     def count_reg(self, system, name):
         # Just a count of MIG read/write strobes for debugging
-        rd = Signal(intbv(0)[16:])
-        wr = Signal(intbv(0)[16:])
+        rd = Signal(intbv(0)[12:])
+        wr = Signal(intbv(0)[12:])
+        cmd = Signal(intbv(0)[8:])
 
         reg = SimpleReg(system,
                         'mig_counts_%s' % name,
                         "MIG counts for port %s", [
             RoField('rd_count', "", rd),
             RoField('wr_count', "", wr),
+            RoField('cmd_count', "", cmd),
             ])
         reg_inst = reg.gen()
 
@@ -182,6 +184,11 @@ class MigPort(object):
         def rd_seq():
             if self.rd_en:
                 rd.next = rd + 1
+
+        @always_seq(self.cmd_clk.posedge, self.mig.rst)
+        def cmd_seq():
+            if self.cmd_en:
+                cmd.next = cmd + 1
 
         return reg.bus(), instances()
 
@@ -465,6 +472,126 @@ class Mig(object):
         insts.append(mcb_ui_inst)
 
         return insts
+
+class MigReader(object):
+    def __init__(self, mig_port, fifo):
+        self.fifo = fifo
+        self.mig_port = mig_port
+
+        assert fifo.WR_CLK == mig_port.rd_clk
+
+    def gen(self):
+
+        """The MIG rd_empty signal is registered and is asserted the
+        cycle after the read FIFO becomes empty.  The easiest way I
+        can think of to make this work with my FIFO interface is to
+        always read a word and afterwards check if the FIFO was empty
+        or not."""
+
+        holding_full = Signal(False)
+        holding_data = Signal(intbv(0)[len(self.fifo.WR_DATA):])
+
+        # @always_comb
+        #def comb():
+        #    self.mig_port.rd_en.next = not holding_full
+
+        @always_seq(self.fifo.WR_CLK.posedge, self.fifo.WR_RST)
+        def seq():
+            self.mig_port.rd_en.next = 0
+
+            self.fifo.WR.next = 0
+            self.fifo.WR_DATA.next = holding_data
+
+            if holding_full:
+                if not self.fifo.WR_FULL:
+                    self.fifo.WR.next = 1
+                    self.mig_port.rd_en.next = 1
+                    holding_full.next = 0
+            else:
+                self.mig_port.rd_en.next = 1
+
+            if self.mig_port.rd_en:
+                holding_full.next = not self.mig_port.rd_empty
+                holding_data.next = self.mig_port.rd_data
+
+        return instances()
+
+class MigReaderAddresser(object):
+    def __init__(self, name, system, mig_port):
+        assert system.CLK == mig_port.cmd_clk
+
+        self.system = system
+        self.mig_port = mig_port
+
+        self.addr_width = len(mig_port.cmd_byte_addr) - 2
+
+        self._rd_addr_port = Port(self.addr_width)
+        self._rd_count_port = Port(self.addr_width + 1)
+
+        self._regs = [
+            SimpleReg(system, '%s_rd_addr' % name, "", [
+            Field('rd_addr', "Read Address", self._rd_addr_port),
+            ]),
+            SimpleReg(system, '%s_rd_count' % name, "", [
+            Field('rd_count', "Read Count", self._rd_count_port),
+            ]),
+            ]
+
+    def regs_bus(self):
+        return [ reg.bus() for reg in self._regs ]
+
+    def regs_gen(self):
+        insts = []
+        for reg in self._regs:
+            insts.append(reg.gen())
+        return insts
+
+    def gen(self, mig_port):
+        port = self.mig_port
+
+        rd_addr = Signal(intbv(0)[self.addr_width:])
+        rd_count = Signal(intbv(0)[self.addr_width+1:])
+
+        # It's really not a good idea to look at the mig_port.rd_count
+        # here, what I should to is to count the rd_en pulses.  I fill
+        # the fifo with 2 * M words, when M words have been read from the
+        # fifo I can do another read of M words.
+
+        @always_seq(port.cmd_clk.posedge, None)
+        def seq():
+            port.cmd_en.next = 0
+
+            if (port.cmd_empty and
+                port.rd_count <= 30 and
+                rd_count != 0):
+                port.cmd_en.next = 1
+                port.cmd_byte_addr.next = rd_addr << 2
+                port.cmd_instr.next = 1 # read
+
+                if rd_count < 32:
+                    port.cmd_bl.next = rd_count - 1
+                    rd_count.next = 0
+                    rd_addr.next = rd_addr + rd_count
+                else:
+                    port.cmd_bl.next = 32 - 1
+                    rd_count.next = rd_count - 32
+                    rd_addr.next = rd_addr + 32
+
+            if self._rd_addr_port.WR:
+                rd_addr.next = self._rd_addr_port.WR_DATA
+            if self._rd_count_port.WR:
+                rd_count.next = self._rd_count_port.WR_DATA
+
+            if self._rd_addr_port.RD:
+                self._rd_addr_port.RD_DATA.next = rd_addr
+            else:
+                self._rd_addr_port.RD_DATA.next = 0
+            if self._rd_count_port.RD:
+                self._rd_count_port.RD_DATA.next = rd_count
+            else:
+                self._rd_count_port.RD_DATA.next = 0
+
+        return instances()
 
 def gen(mig, port):
     return mig.gen()

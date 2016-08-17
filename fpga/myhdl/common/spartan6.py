@@ -3,7 +3,7 @@ import hacking
 if __name__ == '__main__':
     hacking.reexec_if_needed('spartan6.py')
 
-from myhdl import Signal, SignalType, ResetSignal, instance, always_comb, intbv, always
+from myhdl import Signal, SignalType, ResetSignal, instance, always_comb, intbv, always, always_seq
 
 use_xilinx = 1
 
@@ -1330,7 +1330,22 @@ def mcb_ui_top(
     mcbx_dram_dq.driven = 'wire'
 
     for s in [ sys_rst, ui_clk, sysclk_2x, sysclk_2x_180,
-               pll_ce_0, pll_ce_90, pll_lock ]:
+               pll_ce_0, pll_ce_90, pll_lock,
+
+               p0_cmd_clk, p0_cmd_en, p0_cmd_instr, p0_cmd_bl, p0_cmd_byte_addr,
+               p0_wr_en, p0_wr_mask, p0_wr_data, p0_rd_en,
+               p1_cmd_clk, p1_cmd_en, p1_cmd_instr, p1_cmd_bl, p1_cmd_byte_addr,
+               p1_wr_en, p1_wr_mask, p1_wr_data, p1_rd_en,
+               p2_cmd_clk, p2_cmd_en, p2_cmd_instr, p2_cmd_bl, p2_cmd_byte_addr,
+               p2_wr_en, p2_wr_mask, p2_wr_data, p2_rd_en,
+               p3_cmd_clk, p3_cmd_en, p3_cmd_instr, p3_cmd_bl, p3_cmd_byte_addr,
+               p3_wr_en, p3_wr_mask, p3_wr_data, p3_rd_en,
+               p4_cmd_clk, p4_cmd_en, p4_cmd_instr, p4_cmd_bl, p4_cmd_byte_addr,
+               p4_wr_en, p4_wr_mask, p4_wr_data, p4_rd_en,
+               p5_cmd_clk, p5_cmd_en, p5_cmd_instr, p5_cmd_bl, p5_cmd_byte_addr,
+               p5_wr_en, p5_wr_mask, p5_wr_data, p5_rd_en,
+
+               ]:
         if isinstance(s, SignalType):
             s.read = True
 
@@ -1390,6 +1405,35 @@ def mcb_ui_top(
         def inst():
             uo_done_cal.next = not sys_rst
         insts.append(inst)
+
+    blah = Signal(False)
+
+    if p2_cmd_clk is not None:
+        @always_seq (p2_cmd_clk.posedge, None)
+        def blah_inst():
+            p2_cmd_full.next = p2_cmd_en ^ p2_cmd_instr ^ p2_cmd_bl ^ p2_cmd_byte_addr
+            p2_cmd_empty.next = p2_cmd_en
+
+    if p2_rd_clk is not None:
+        @always_seq (p2_rd_clk.posedge, None)
+        def blah_inst():
+            p2_rd_full.next = p2_rd_en
+            p2_rd_empty.next = p2_rd_en
+            p2_rd_count.next = p2_rd_en
+            p2_rd_overflow.next = p2_rd_en
+            p2_rd_error.next = p2_rd_en
+            p2_rd_data.next = p2_rd_en
+
+    if p2_wr_clk is not None:
+        @always_seq (p2_wr_clk.posedge, None)
+        def blah_inst():
+            p2_wr_full.next = p2_wr_en
+            p2_wr_empty.next = p2_wr_en
+            p2_wr_count.next = p2_wr_en
+            p2_wr_underrun.next = p2_wr_mask
+            p2_wr_error.next = p2_wr_data
+
+    insts.append(blah_inst)
 
     return insts
 

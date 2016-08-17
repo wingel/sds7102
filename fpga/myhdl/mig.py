@@ -499,12 +499,14 @@ class MigReader(object):
 
             self.fifo.WR.next = 0
 
-            if self.mig_port.rd_en.next:
-                self.fifo.WR_DATA.next = self.mig_port.rd_data
-
             tmp_holding_full = 0
             if holding_full:
                 tmp_holding_full = 1
+
+            if self.mig_port.rd_en.next:
+                self.fifo.WR_DATA.next = self.mig_port.rd_data
+                if not self.mig_port.rd_empty:
+                    tmp_holding_full = 1
 
             if tmp_holding_full:
                 if not self.fifo.WR_FULL:
@@ -512,14 +514,7 @@ class MigReader(object):
                     tmp_holding_full = 0
 
             if not tmp_holding_full:
-                if (self.mig_port.rd_count > 2 or
-                    waitstate and not self.mig_port.rd_empty):
-                    self.mig_port.rd_en.next = 1
-                    waitstate.next = 0
-                    tmp_holding_full = 1
-
-                else:
-                    waitstate.next = 1
+                self.mig_port.rd_en.next = 1
 
             holding_full.next = tmp_holding_full
 

@@ -490,7 +490,6 @@ class MigReader(object):
         or not."""
 
         holding_full = Signal(False)
-        holding_data = Signal(intbv(0)[len(self.fifo.WR_DATA):])
 
         waitstate = Signal(False)
 
@@ -499,30 +498,30 @@ class MigReader(object):
             self.mig_port.rd_en.next = 0
 
             self.fifo.WR.next = 0
-            self.fifo.WR_DATA.next = holding_data
 
-            can_read = 0
+            if self.mig_port.rd_en.next:
+                self.fifo.WR_DATA.next = self.mig_port.rd_data
 
+            tmp_holding_full = 0
             if holding_full:
+                tmp_holding_full = 1
+
+            if tmp_holding_full:
                 if not self.fifo.WR_FULL:
                     self.fifo.WR.next = 1
-                    holding_full.next = 0
-                    can_read = 1
-            else:
-                can_read = 1
+                    tmp_holding_full = 0
 
-            if can_read:
-                if (self.mig_port.rd_count > 1 or
+            if not tmp_holding_full:
+                if (self.mig_port.rd_count > 2 or
                     waitstate and not self.mig_port.rd_empty):
                     self.mig_port.rd_en.next = 1
                     waitstate.next = 0
+                    tmp_holding_full = 1
 
                 else:
                     waitstate.next = 1
 
-            if self.mig_port.rd_en:
-                holding_full.next = 1
-                holding_data.next = self.mig_port.rd_data
+            holding_full.next = tmp_holding_full
 
         return instances()
 

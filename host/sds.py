@@ -387,6 +387,7 @@ def main():
 
         print "0x130 -> 0x%08x" % sds.read_soc_reg(0x130)
         print "0x131 -> 0x%08x" % sds.read_soc_reg(0x131)
+        print "0x132 -> 0x%08x" % sds.read_soc_reg(0x132)
         print "0x134 -> 0x%08x" % sds.read_soc_reg(0x134)
         print "0x135 -> 0x%08x" % sds.read_soc_reg(0x135)
 
@@ -399,8 +400,12 @@ def main():
         rd_data = sds.read_soc_regs(0x8000, n)
         print rd_data
 
-        sds.write_soc_reg(0x120, 0x10)
-        sds.write_soc_reg(0x130, 0x20)
+        src_addr = 0x20
+        dst_addr = 0x10
+        count = 0x300
+
+        sds.write_soc_reg(0x130, src_addr)
+        sds.write_soc_reg(0x120, dst_addr)
 
         print "0x120 -> 0x%08x" % sds.read_soc_reg(0x120)
         print "0x121 -> 0x%08x" % sds.read_soc_reg(0x121)
@@ -408,12 +413,13 @@ def main():
 
         print "0x130 -> 0x%08x" % sds.read_soc_reg(0x130)
         print "0x131 -> 0x%08x" % sds.read_soc_reg(0x131)
+        print "0x132 -> 0x%08x" % sds.read_soc_reg(0x132)
         print "0x134 -> 0x%08x" % sds.read_soc_reg(0x134)
         print "0x135 -> 0x%08x" % sds.read_soc_reg(0x135)
 
         decode_mig_status(sds.read_soc_reg(0x134))
 
-        sds.write_soc_reg(0x131, 0x10)
+        sds.write_soc_reg(0x131, count)
 
         print "0x120 -> 0x%08x" % sds.read_soc_reg(0x120)
         print "0x121 -> 0x%08x" % sds.read_soc_reg(0x121)
@@ -421,16 +427,19 @@ def main():
 
         print "0x130 -> 0x%08x" % sds.read_soc_reg(0x130)
         print "0x131 -> 0x%08x" % sds.read_soc_reg(0x131)
+        print "0x132 -> 0x%08x" % sds.read_soc_reg(0x132)
         print "0x134 -> 0x%08x" % sds.read_soc_reg(0x134)
         print "0x135 -> 0x%08x" % sds.read_soc_reg(0x135)
 
         decode_mig_status(sds.read_soc_reg(0x134))
 
-        rd_data = sds.read_soc_regs(0x8000, n)
-        print rd_data
+        ram_data = sds.read_soc_regs(0x8000 + dst_addr, count)
+        print ram_data
 
-        rd_data = sds.read_ddr(0x20, n)
-        print rd_data
+        ddr_data = sds.read_ddr(src_addr, count)
+        print ddr_data
+
+        assert all(ram_data == ddr_data)
 
     if 0:
         wr_data = [ random.randrange(100) for _ in range(16) ]

@@ -17,6 +17,7 @@ from common.rst import rstgen
 
 from .sync import SyncFifo
 from .async import AsyncFifo
+from .interleaver import FifoInterleaver
 from .dummy import DummyFifo, DummyWriteFifo, DummyReadFifo
 
 class Harness(object):
@@ -39,11 +40,19 @@ class Harness(object):
             fifo = AsyncFifo(rst, wr_clk, rd_clk,
                              intbv(0)[data_width:], fifo_depth)
 
-        elif 1:
+        elif 0:
             rd_fifo = SyncFifo(rst, rd_clk, intbv(0)[data_width:], fifo_depth)
             wr_fifo = rd_fifo
 
             self.dut = wr_fifo
+
+        elif 1:
+            wr_fifo = SyncFifo(rst, wr_clk, intbv(0)[data_width:], fifo_depth)
+            self.stimuli.append(wr_fifo.gen())
+
+            rd_fifo = FifoInterleaver(wr_fifo)
+
+            self.dut = rd_fifo
 
         elif 1:
             rd_fifo = DummyReadFifo(rst, rd_clk, intbv(0)[data_width:],

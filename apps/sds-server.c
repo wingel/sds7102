@@ -42,7 +42,7 @@ static void set_gpio(unsigned pin, const char *value)
     }
     assert(fd != -1);
     r = write(fd, value, strlen(value));
-    fprintf(stderr, "r %d\n", r);
+    // fprintf(stderr, "r %d\n", r);
     if (r == -1)
 	perror("r");
     assert(r == strlen(value));

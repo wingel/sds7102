@@ -1,8 +1,9 @@
 #! /usr/bin/python
-from myhdl import Signal, intbv, always, always_seq, always_comb, instances
+from myhdl import Signal, ConcatSignal, intbv, always, always_seq, always_comb, instances
 
 from fifo.async import AsyncFifo
-from fifo.dummy import DummyFifo
+from fifo.dummy import DummyFifo, DummyReadFifo
+from fifo.interleaver import FifoInterleaver
 
 from wb import WbSlave
 
@@ -101,28 +102,22 @@ class FifoSampler(object):
     def gen(self):
         count = Signal(intbv(0, 0, self.count + 1))
 
-        D = 8
-        d = Signal(intbv(0, 0, D))
-
         @always(self.sample_clk.posedge)
         def sample_seq():
             self.fifo.WR.next = 0
             self.fifo.WR_DATA.next = self.sample_data
 
             if self.sample_enable:
-                if d != 0:
-                    d.next = d - 1
-                elif count != self.count:
+                if count != self.count:
                     if self.fifo.WR_FULL:
-                        self.overflow.next = 1
+                        self.overflow.next = 0
                     else:
                         self.fifo.WR.next = 1
                     count.next = count + 1
 
             else:
-                d.next = D - 1
                 count.next = 0
-                self.overflow.next = 0
+                self.overflow.next = 1
 
         return sample_seq
 
@@ -130,13 +125,12 @@ class FifoSampler(object):
 # the writing and another part that writes the command and address
 # whenever the fifo becomes full enough
 class MigFifoWriter(object):
-    def __init__(self, system, fifo, port, enable, base, chunk, stride):
-        self.system = system
+    def __init__(self, fifo, port, base, chunk, stride):
+        assert id(fifo.RD_CLK) == id(port.wr_clk)
 
         self.fifo = fifo
 
         self.port = port
-        self.enable = enable
 
         self.base = base
         self.chunk = chunk
@@ -149,7 +143,7 @@ class MigFifoWriter(object):
         addr = Signal(intbv(self.base)[len(port.cmd_byte_addr):])
         chunk = Signal(intbv(0, 0, self.chunk))
 
-        @always(self.system.CLK.posedge)
+        @always_seq(fifo.RD_CLK.posedge, fifo.RD_RST)
         def seq():
             port.cmd_en.next = 0
             port.cmd_byte_addr.next = addr << 2
@@ -161,27 +155,23 @@ class MigFifoWriter(object):
 
             self.fifo.RD.next = 0
 
-            if not self.enable:
-                addr.next = self.base
+            # We can not use wr_full since it is registered and
+            # shows the full status once cycle too late.  Use the
+            # count instead and keep a bit of a margin.
 
-            else:
-                # We can not use wr_full since it is registered and
-                # shows the full status once cycle too late.  Use the
-                # count instead and keep a bit of a margin.
+            if (not fifo.RD_EMPTY and
+                not port.cmd_full and
+                port.wr_count < 60):
+                self.fifo.RD.next = 1
+                port.wr_en.next = 1
 
-                if (not fifo.RD_EMPTY and
-                    not port.cmd_full and
-                    port.wr_count < 60):
-                    self.fifo.RD.next = 1
-                    port.wr_en.next = 1
+                if chunk == self.chunk - 1:
+                    chunk.next = 0
+                    port.cmd_en.next = 1
+                    addr.next = addr + self.stride
 
-                    if chunk == self.chunk - 1:
-                        chunk.next = 0
-                        port.cmd_en.next = 1
-                        addr.next = addr + self.stride
-
-                    else:
-                        chunk.next = chunk + 1
+                else:
+                    chunk.next = chunk + 1
 
         @always_comb
         def comb():
@@ -189,62 +179,171 @@ class MigFifoWriter(object):
 
         return instances()
 
-_n = 0
+# For some reason MyHdl won't give some instances unique names so use
+# this hack to force unique names
+def uniqify(s, v, d):
+    d['%s_%u' % (s, id(v))] = v
 
 class MigSampler(object):
     def __init__(self, sample_clk, sample_data, sample_enable,
-                 system, port, overflow,
-                 base = 0, chunk = 32, stride = 32,
-                 count = 4 * 1024 * 1024, fifo_depth = 512):
+                 mig_port, overflow,
+                 count, fifo_depth,
+                 base, chunk, stride,
+                 split):
         self.sample_clk = sample_clk
         self.sample_data = sample_data
         self.sample_enable = sample_enable
 
-        self.system = system
-        self.port = port
-        self.overflow = overflow
+        self.mig_port = mig_port
+
+        self.overflow = Signal(False)
 
         self.count = count
         self.fifo_depth = fifo_depth
+
         self.base = base
         self.chunk = chunk
         self.stride = stride
 
+        self.split = split
+
     def gen(self):
-        rst = Signal(False)
+        # I need this otherwise MyHDL will not make this a unique
+        # instance and I'll get errors about conflicting definitions
+        # in the verilog code
+        dummy = Signal(False)
+        @always_seq(self.sample_clk.posedge, None)
+        def dummy_inst():
+            dummy.next = self.overflow
 
-        @always_comb
-        def rst_inst():
-            rst.next = not self.sample_enable
+        wr_fifo = AsyncFifo(rst = self.mig_port.mig.rst,
+                            wr_clk = self.sample_clk,
+                            rd_clk = self.mig_port.wr_clk,
+                            factory = self.sample_data.val,
+                            depth = self.fifo_depth)
+        wr_fifo_inst = wr_fifo.gen()
 
-        if 1:
-            fifo = AsyncFifo(rst = rst, wr_clk = self.sample_clk,
-                             rd_clk = self.system.CLK,
-                             factory = self.sample_data.val,
-                             depth = self.fifo_depth)
+        if 0:
+            if self.base:
+                n = 1
+            else:
+                n = 0
+
+            rd_fifo = DummyReadFifo(rst = self.mig_port.mig.rst,
+                                    clk = self.mig_port.wr_clk,
+                                    factory = self.sample_data.val,
+                                    count = self.count, skip = 0,
+                                    base = n, increment = 2)
+            rd_fifo_inst = rd_fifo.gen()
+
+        elif self.split:
+            rd_fifo = FifoInterleaver(wr_fifo)
+            rd_fifo_inst = rd_fifo.gen()
+
         else:
-            global _n
-            fifo = DummyFifo(rst = rst,
-                             rd_clk = self.system.CLK,
-                             factory = self.sample_data.val,
-                             base = _n, inc = 2)
-            _n = _n + 1
-
-        fifo_inst = fifo.gen()
+            rd_fifo = wr_fifo
 
         sampler = FifoSampler(sample_clk = self.sample_clk,
                               sample_data = self.sample_data,
                               sample_enable = self.sample_enable,
                               count = self.count,
-                              fifo = fifo,
+                              fifo = wr_fifo,
                               overflow = self.overflow)
         sampler_inst = sampler.gen()
 
-        writer = MigFifoWriter(self.system, fifo, self.port,
-                               self.sample_enable,
+        writer = MigFifoWriter(fifo = rd_fifo,
+                               port = self.mig_port,
                                base = self.base,
                                chunk = self.chunk,
                                stride = self.stride)
         writer_inst = writer.gen()
+
+        return instances()
+
+class MigSampler2(object):
+    def __init__(self,
+                 sample_clk, sample_data_0, sample_data_1, sample_enable,
+                 mig_port_0, mig_port_1, overflow_0, overflow_1,
+                 count = 64,
+                 fifo_depth = 256):
+
+        self.sample_clk = sample_clk
+        self.sample_data_0 = sample_data_0
+        self.sample_data_1 = sample_data_1
+        self.sample_enable = sample_enable
+
+        self.mig_port_0 = mig_port_0
+        self.mig_port_1 = mig_port_1
+
+        self.overflow_0 = overflow_0
+        self.overflow_1 = overflow_1
+
+        self.count = count
+        self.fifo_depth = fifo_depth
+
+        self.chunk = 32
+
+    def gen(self):
+        adc_data = ConcatSignal(self.sample_data_0, self.sample_data_1)
+
+        enable_0 = Signal(False)
+        enable_1 = Signal(False)
+        enable_cnt = Signal(intbv(0, 0, self.chunk))
+
+        assert self.chunk % 2 == 0
+        half_chunk = self.chunk / 2
+
+        @always_comb
+        def enable_comb():
+            enable_0.next = 0
+            enable_1.next = 0
+
+            if self.sample_enable:
+                sel = enable_cnt < half_chunk
+                enable_0.next = sel
+                enable_1.next = not sel
+
+        @always_seq(self.sample_clk.posedge, None)
+        def enable_seq():
+            if not self.sample_enable:
+                enable_cnt.next = 0
+            else:
+                enable_cnt.next = 0
+                if enable_cnt != self.chunk - 1:
+                    enable_cnt.next = enable_cnt + 1
+
+        sampler_0 = MigSampler(sample_clk = self.sample_clk,
+                               sample_data = adc_data,
+                               sample_enable = enable_0,
+
+                               mig_port = self.mig_port_0,
+                               overflow = self.overflow_0,
+
+                               count = self.count,
+                               fifo_depth = self.fifo_depth,
+
+                               base = 0,
+                               chunk = self.chunk,
+                               stride = 2 * self.chunk,
+
+                               split = True)
+        sampler_0_inst = sampler_0.gen()
+
+        sampler_1 = MigSampler(sample_clk = self.sample_clk,
+                               sample_data = adc_data,
+                               sample_enable = enable_1,
+
+                               mig_port = self.mig_port_1,
+                               overflow = self.overflow_1,
+
+                               count = self.count,
+                               fifo_depth = self.fifo_depth,
+
+                               base = self.chunk,
+                               chunk = self.chunk,
+                               stride = 2 * self.chunk,
+
+                               split = True)
+        sampler_1_inst = sampler_1.gen()
 
         return instances()

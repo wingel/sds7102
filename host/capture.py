@@ -5,7 +5,7 @@ import sys
 import time
 import os
 
-from sds import SDS
+from sds import SDS, hd
 from convert import convert, save, display
 
 def main():
@@ -74,10 +74,26 @@ def main():
         sds.bu2506(1, 0x295)
         sds.bu2506(2, 0x295)
 
+    if 1:
+        sds.write_soc_reg(0x230, 0)
+        time.sleep(0.1)
+
+        sds.mig_reset()
+        time.sleep(0.1)
+
+        if 0:
+            sds.write_ddr(0, [0xaaaaaaaa] * 512)
+        else:
+            sds.write_ddr(0, [0x55555555] * 512)
+
     if 0:
         data = sds.capture(1024)
     else:
-        data = sds.mig_capture(512 * 1024)
+        n = 256
+        n *= 1024
+        data = sds.mig_capture(256 * 1024, synthetic = 0)
+
+    hd(data[:256])
 
     data.tofile('capture.bin')
 

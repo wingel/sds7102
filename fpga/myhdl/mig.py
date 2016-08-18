@@ -563,6 +563,9 @@ class MigReaderAddresser(object):
         # the fifo with 2 * M words, when M words have been read from the
         # fifo I can do another read of M words.
 
+        # TODO I should really look at successful reads, i.e. when
+        # RD_EMPTY is false.  Or go back to the more complex reader
+
         @always_seq(port.cmd_clk.posedge, None)
         def seq():
             port.cmd_en.next = 0

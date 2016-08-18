@@ -35,7 +35,7 @@ from wb import WbMux
 from hybrid_counter import HybridCounter
 from regfile import RegFile, Field, RoField, RwField, Port
 from ddr import Ddr, DdrBus, ddr_connect
-from sampler import Sampler, MigSampler, FifoSampler, MigFifoWriter
+from sampler import Sampler, MigSampler2
 from shifter import Shifter, ShifterBus
 from ram import Ram
 from mig import Mig, MigPort, mig_with_tb, MigReaderAddresser, MigReader
@@ -333,66 +333,88 @@ def top(din, init_b, cclk,
                                 skip_cnt = 99)
         mux.add(adc_sampler_1, 0x6000)
 
+    mig_sample_synthetic = Signal(False)
+    mig_sample_enable = Signal(False)
+
+    mig_sample_enable_sync_adc = Signal(False)
+    insts.append(syncro(adc_clk,
+                        mig_sample_enable, mig_sample_enable_sync_adc))
+
+    mig_sample_overflow_0 = Signal(False)
+    mig_sample_overflow_1 = Signal(False)
+
+    # Synthetic ADC data to test the FIFO
+    mig_synthetic_data_0 = Signal(intbv(0)[32:])
+    mig_synthetic_data_1 = Signal(intbv(0)[32:])
+
+    @always_seq(adc_clk.posedge, None)
+    def mig_synthetic_inst():
+        if mig_sample_enable_sync_adc:
+            mig_synthetic_data_0.next = mig_synthetic_data_0 + 2
+            mig_synthetic_data_1.next = mig_synthetic_data_1 + 2
+        else:
+            mig_synthetic_data_0.next = 1
+            mig_synthetic_data_1.next = 0
+    insts.append(mig_synthetic_inst)
+
+    mig_data_0 = Signal(intbv(0)[32:])
+    mig_data_1 = Signal(intbv(0)[32:])
+
+    @always_comb
+    def mig_data_inst():
+        if mig_sample_synthetic:
+            mig_data_0.next = mig_synthetic_data_0
+            mig_data_1.next = mig_synthetic_data_1
+        else:
+            mig_data_0.next = adc_dat_0
+            mig_data_1.next = adc_dat_1
+    insts.append(mig_data_inst)
+
     if 1:
-        # Real ADC data
-
-        mig_data_0 = adc_dat_0
-        mig_data_1 = adc_dat_1
-
-    else:
-        # Synthetic ADC data to test the FIFO
-
-        mig_data_0 = Signal(intbv(0)[32:])
-        mig_data_1 = Signal(intbv(0)[32:])
-
-        @always_seq(adc_clk.posedge, None)
-        def adc_dummy_inst():
-            if adc_capture_sync:
-                mig_data_0.next = mig_data_0 + 2
-                mig_data_1.next = mig_data_1 + 2
-            else:
-                mig_data_0.next = 1
-                mig_data_1.next = 0
-        insts.append(adc_dummy_inst)
-
-    if 1:
-        mig_chunk = 32
-
-        adc_mig_port_0 = MigPort(mig, soc_system.CLK)
+        adc_mig_port_0 = MigPort(mig, soc_clk)
         mig.ports[4] = adc_mig_port_0
 
         mig_status_4_bus, mig_status_4_inst = adc_mig_port_0.status_reg(soc_system, 4)
         sm.add(mig_status_4_bus, addr = 0x220)
         insts.append(mig_status_4_inst)
 
-        mig_sampler_0 = MigSampler(sample_clk = adc_clk,
-                                   sample_data = mig_data_0,
-                                   sample_enable = adc_capture_sync,
-                                   overflow = fifo_overflow_0,
-                                   system = soc_system,
-                                   port = adc_mig_port_0,
-                                   base = mig_chunk,
-                                   chunk = mig_chunk,
-                                   stride = mig_chunk * 2)
-        insts.append(mig_sampler_0.gen())
+        mig_count_4_bus, mig_count_4_inst = adc_mig_port_0.count_reg(soc_system, 4)
+        sm.add(mig_count_4_bus, addr = 0x221)
+        insts.append(mig_count_4_inst)
 
-        adc_mig_port_1 = MigPort(mig, soc_system.CLK)
+        adc_mig_port_1 = MigPort(mig, soc_clk)
         mig.ports[5] = adc_mig_port_1
 
         mig_status_5_bus, mig_status_5_inst = adc_mig_port_1.status_reg(soc_system, 5)
-        sm.add(mig_status_5_bus, addr = 0x221)
+        sm.add(mig_status_5_bus, addr = 0x228)
         insts.append(mig_status_5_inst)
 
-        mig_sampler_1 = MigSampler(sample_clk = adc_clk,
-                                   sample_data = mig_data_1,
-                                   sample_enable = adc_capture_sync,
-                                   overflow = fifo_overflow_1,
-                                   system = soc_system,
-                                   port = adc_mig_port_1,
-                                   base = 0,
-                                   chunk = mig_chunk,
-                                   stride = mig_chunk * 2)
-        insts.append(mig_sampler_1.gen())
+        mig_count_5_bus, mig_count_5_inst = adc_mig_port_1.count_reg(soc_system, 5)
+        sm.add(mig_count_5_bus, addr = 0x229)
+        insts.append(mig_count_5_inst)
+
+        mig_sampler = MigSampler2(sample_clk = adc_clk,
+                                  sample_data_0 = mig_data_0,
+                                  sample_data_1 = mig_data_1,
+                                  sample_enable = mig_sample_enable_sync_adc,
+
+                                  mig_port_0 = adc_mig_port_0,
+                                  mig_port_1 = adc_mig_port_1,
+
+                                  overflow_0 = mig_sample_overflow_0,
+                                  overflow_1 = mig_sample_overflow_1,
+                                  )
+        insts.append(mig_sampler.gen())
+
+        mig_sampler_reg = SimpleReg(soc_system, 'mig_sampler', "", [
+            SimpleRwField('enable', "", mig_sample_enable),
+            SimpleRwField('synthetic', "", mig_sample_synthetic),
+            SimpleRoField('overflow_0', "", mig_sample_overflow_0),
+            SimpleRoField('overflow_1', "", mig_sample_overflow_1),
+            ])
+
+        sm.add(mig_sampler_reg.bus(), addr = 0x230)
+        insts.append(mig_sampler_reg.gen())
 
     ####################################################################
     # Analog frontend

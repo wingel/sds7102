@@ -235,33 +235,45 @@ class SDS(object):
         print "ctrl 0x%08x" % self.read_soc_reg(0x200)
         print
 
-    def mig_capture(self, count):
-        self.mig_reset()
+    def mig_capture(self, count, synthetic = 0):
+        self.write_soc_reg(0x230, 0)
+        time.sleep(0.1)
 
-        self.write_reg(0x230, 0)
-        self.write_reg(0x230, 1)
+        if 1:
+            self.mig_reset()
+            time.sleep(0.1)
+
+        v = 1
+        if synthetic:
+            v |= 2
+        self.write_soc_reg(0x230, v)
+        print "capture_status 0x%08x" % self.read_soc_reg(0x230)
+        time.sleep(0.1)
+
+        self.write_soc_reg(0x230, 0)
+        print "capture_status 0x%08x" % self.read_soc_reg(0x230)
         time.sleep(0.1)
 
         t0 = time.time()
-        data = self.read_ddr_b(0, count / 2)
+        data = self.read_ddr_b(0, count)
         t = time.time()
         print "capture time", t - t0
 
         if 0:
-            data2 = self.read_ddr_b(0, count / 2)
+            data2 = self.read_ddr_b(0, count)
             assert all(data == data2)
 
-        print "capture_status 0x%08x" % self.read_reg(0x230)
-        print
-
         print "p2"
+        print "counts 0x%08x" % self.read_soc_reg(0x221)
         decode_mig_status(self.read_soc_reg(0x220))
+
         print "p3"
-        decode_mig_status(self.read_soc_reg(0x221))
+        print "counts 0x%08x" % self.read_soc_reg(0x229)
+        decode_mig_status(self.read_soc_reg(0x228))
 
-        chunk = 32
+        if 0:
+            chunk = 32
 
-        if 1:
             data = data[:int(len(data) / (chunk * 2)) * (chunk * 2)]
 
             s = numpy.reshape(data, (len(data) / (chunk * 2), 2, chunk))
@@ -381,6 +393,11 @@ def main():
     if 1:
         sds.mig_reset()
 
+        sds.write_ddr(0, [ 0xff ] *  2048)
+
+        if 1:
+            return
+
         print "0x120 -> 0x%08x" % sds.read_soc_reg(0x120)
         print "0x121 -> 0x%08x" % sds.read_soc_reg(0x121)
         print "0x122 -> 0x%08x" % sds.read_soc_reg(0x122)
@@ -475,6 +492,17 @@ def main():
             print rd_data
 
             assert all(rd_data[0x28 : 0x28 + 0x8] == wr_data[4:4+8])
+
+def hd(a):
+    w = 8
+    for i in range(0, len(a), w):
+        s = "%06x " % i
+        n = len(a) - i
+        if n > w:
+            n = w
+        for j in range(n):
+            s += " %08x" % a[i + j]
+        print s
 
 if __name__ == '__main__':
     main()

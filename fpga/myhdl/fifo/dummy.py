@@ -8,13 +8,15 @@ if __name__ == '__main__':
 from myhdl import (Signal, ResetSignal, intbv,
                    always_seq, always_comb, instances)
 
+from common.rst import rst_sync
+
 class DummyFifo(object):
     def __init__(self, rst, rd_clk, factory, base, inc):
         self.factory = factory
         self.base = base
         self.inc = inc
 
-        self.RST = rst
+        self.RD_RST = rst
 
         # These signals are in the WR_CLK domain
         self.WR_CLK = Signal(False)
@@ -29,12 +31,12 @@ class DummyFifo(object):
         self.RD_EMPTY = Signal(False)
 
     def gen(self):
-        if self.RST is None:
+        if self.RD_RST is None:
             rd_rst = None
         else:
             rd_rst = ResetSignal(True, True, False)
 
-            rd_rst_inst = rst_sync(self.RD_CLK, self.RST, rd_rst)
+            rd_rst_inst = rst_sync(self.RD_CLK, self.RD_RST, rd_rst)
 
         cnt = Signal(intbv(self.base)[16:])
 

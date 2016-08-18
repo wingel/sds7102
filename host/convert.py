@@ -224,7 +224,7 @@ def main():
             o = 254500
             samples = samples[:,o:o + 4000]
             print samples
-        elif 1:
+        elif 0:
             o = 256950
             samples = samples[:,o:o + 400]
             print samples
@@ -242,7 +242,7 @@ def main():
                         d = e - s + 1
                         if d > 5:
                             print x, s, e
-                        for i in range(s, e + 1):
+                        for i in range(s, e):
                             data[i, x / scale, c] += intensity / d + intensity / 5
                 else:
                     data[v, x / scale, c] += intensity + intensity / 5

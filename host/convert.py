@@ -211,44 +211,61 @@ def main():
         w = 400
         h = 256
 
-        data = numpy.zeros((h, w, 3), dtype = numpy.double)
-
         print samples
         if 0:
             samples = numpy.vstack((samples[0,:-20000], samples[1,20000:]))
             o = 0
             samples = samples[:,o:o + 400000]
             print samples
-        elif 0:
+        elif 1:
             samples = numpy.vstack((samples[0,:-1000], samples[1,1000:]))
-            o = 254500
+            o = 337000
             samples = samples[:,o:o + 4000]
             print samples
-        elif 0:
-            o = 256950
+        elif 1:
+            o = 339050
             samples = samples[:,o:o + 400]
             print samples
+
+        # numpy.dstack(samples).tofile('samples1024.bin')
+
+        data = numpy.zeros((h, w, 3), dtype = numpy.double)
 
         scale = float(len(samples[0])) / w
         intensity = 10.0
         for c in range(2):
-            last = None
-            for x, v in enumerate(samples[c]):
-                v = 255 - v
-                if last is not None:
-                    s = min(last, v)
-                    e = max(last, v)
-                    if s != e or ( s != 0 and s != 255 ):
-                        d = e - s + 1
-                        if d > 5:
-                            print x, s, e
-                        for i in range(s, e):
-                            data[i, x / scale, c] += intensity / d + intensity / 5
-                else:
-                    data[v, x / scale, c] += intensity + intensity / 5
-                last = v
+            minval2 = 255
+            maxval2 = 0
+            for x in range(w):
+                for i in range(minval2, maxval2 + 1):
+                    data[i, x, c] += scale * 0.1
 
-        data = numpy.log2(data + 1)
+                minval = 255
+                maxval = 0
+                for v in samples[c][int(x * scale) : int((x+1) * scale)]:
+                    if v != 0 and v != 255:
+                        v = 255 - v
+                        minval = min(minval, v)
+                        maxval = max(maxval, v)
+                        data[v, x, c] += 1
+
+                d = maxval - minval
+                if d > 5:
+                    print x * scale, minval, maxval, d
+
+                for i in range(minval, maxval + 1):
+                    data[i, x, c] += scale * 0.1
+
+                for i in range(minval2, maxval + 1):
+                    data[i, x, c] += scale * 0.25
+
+                for i in range(minval, maxval2 + 1):
+                    data[i, x, c] += scale * 0.25
+
+                minval2 = minval
+                maxval2 = maxval
+
+        # data = numpy.log2(data + 1)
 
         # data = data.astype(numpy.uint8) * 16
 

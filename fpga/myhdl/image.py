@@ -41,6 +41,8 @@ from ram import Ram
 from mig import Mig, MigPort, mig_with_tb, MigReaderAddresser, MigReader
 from frontpanel import FrontPanel
 
+from scope.renderer import Renderer
+
 def top(din, init_b, cclk,
         ref_clk,
         soc_clk_p, soc_clk_n, soc_cs, soc_ras, soc_cas, soc_we, soc_ba, soc_a,
@@ -220,26 +222,16 @@ def top(din, init_b, cclk,
         insts.append(led_inst)
 
     ####################################################################
-    # Test code for FIFO RAM
+    # FIFO reading from MIG
 
     if 1:
-        rd_fifo = SyncFifo(None, soc_clk, intbv(0)[32:], 4)
-        insts.append(rd_fifo.gen())
+        mig_fifo = SyncFifo(None, soc_clk, intbv(0)[32:], 4)
+        insts.append(mig_fifo.gen())
 
-        rd_count_bus, rd_count_inst = rd_fifo.count_reg(soc_system, 'rd_fifo')
-        sm.add(rd_count_bus, addr = 0x132)
-        insts.append(rd_count_inst)
-
-        wr_fifo = DummyWriteFifo(None, soc_clk, intbv(0)[32:])
-        insts.append(wr_fifo.gen())
-
-        fifo_ram = FifoRam('fifo_ram', soc_system, wr_fifo, rd_fifo, 1024, 32)
-
-        insts.append(fifo_ram.regs_gen())
-        sm.add(fifo_ram.regs_bus(), addr = 0x120)
-
-        insts.append(fifo_ram.gen())
-        sm.add(fifo_ram.bus(), addr = 0x8000)
+        mig_fifo_count_bus, mig_fifo_count_inst = mig_fifo.count_reg(
+            soc_system, 'mig_fifo')
+        sm.add(mig_fifo_count_bus, addr = 0x132)
+        insts.append(mig_fifo_count_inst)
 
         mig_rd_port = MigPort(mig, soc_clk)
         mig.ports[2] = mig_rd_port
@@ -260,8 +252,91 @@ def top(din, init_b, cclk,
         mig_reader_addresser_inst = mig_reader_addresser.gen(mig_rd_port)
         insts.append(mig_reader_addresser_inst)
 
-        mig_reader = MigReader(mig_rd_port, rd_fifo)
+        mig_reader = MigReader(mig_rd_port, mig_fifo)
         insts.append(mig_reader.gen())
+
+    ####################################################################
+    # Test code for FIFO RAM
+
+    if 0:
+        wr_fifo = DummyWriteFifo(None, soc_clk, intbv(0)[32:])
+        insts.append(wr_fifo.gen())
+
+        fifo_ram = FifoRam('fifo_ram', soc_system, wr_fifo, mig_fifo, 1024, 32)
+
+        insts.append(fifo_ram.regs_gen())
+        sm.add(fifo_ram.regs_bus(), addr = 0x120)
+
+        insts.append(fifo_ram.gen())
+        sm.add(fifo_ram.bus(), addr = 0x8000)
+
+    ####################################################################
+    # Test code for renderer
+
+    if 1:
+        renderer_rst = ResetSignal(True, True, False)
+        renderer_idle = Signal(False)
+
+        renderer0 = Renderer(system = soc_system,
+                             sample_width = 8,
+                             accumulator_width = 16)
+        insts.append(renderer0.gen())
+
+        renderer1 = Renderer(system = soc_system,
+                             sample_width = 8,
+                             accumulator_width = 16)
+        insts.append(renderer1.gen())
+
+        renderer2 = Renderer(system = soc_system,
+                             sample_width = 8,
+                             accumulator_width = 16)
+        insts.append(renderer2.gen())
+
+        renderer3 = Renderer(system = soc_system,
+                             sample_width = 8,
+                             accumulator_width = 16)
+        insts.append(renderer3.gen())
+
+        renderer_reg = SimpleReg(soc_system, 'renderer', "", [
+            SimpleRwField('reset', "", renderer_rst),
+            SimpleRoField('idle', "", renderer_idle),
+            ])
+
+        sm.add(renderer_reg.bus(), addr = 0x240)
+        insts.append(renderer_reg.gen())
+
+        @always_seq(soc_clk.posedge, None)
+        def renderer_seq():
+            renderer0.STROBE.next = 0
+            renderer1.STROBE.next = 0
+            renderer2.STROBE.next = 0
+            renderer3.STROBE.next = 0
+
+            mig_fifo.RD.next = 0
+            if not mig_fifo.RD_EMPTY:
+                renderer0.SAMPLE.next = mig_fifo.RD_DATA[8:0]
+                renderer0.STROBE.next = 1
+
+                renderer1.SAMPLE.next = mig_fifo.RD_DATA[16:8]
+                renderer1.STROBE.next = 1
+
+                renderer2.SAMPLE.next = mig_fifo.RD_DATA[24:16]
+                renderer2.STROBE.next = 1
+
+                renderer3.SAMPLE.next = mig_fifo.RD_DATA[32:24]
+                renderer3.STROBE.next = 1
+
+                mig_fifo.RD.next = 1
+
+            renderer_idle.next = 0
+            if mig_fifo.RD_EMPTY and mig_reader_addresser.rd_count == 0:
+                renderer_idle.next = 1
+        insts.append(renderer_seq)
+
+        sm.add(renderer0.bus(), addr = 0x400)
+        sm.add(renderer1.bus(), addr = 0x500)
+        sm.add(renderer2.bus(), addr = 0x600)
+        sm.add(renderer3.bus(), addr = 0x700)
 
     ####################################################################
     # ADC bus

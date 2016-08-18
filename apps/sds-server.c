@@ -7,6 +7,7 @@
 #include <time.h>
 #include <string.h>
 
+#include <sys/time.h>
 #include <sys/mman.h>
 
 #include "reg.h"
@@ -70,14 +71,50 @@ static char *tok(char **ps)
     return p;
 }
 
+static volatile uint32_t *soc;
+
+int render_column(uint32_t *buf, unsigned addr, unsigned scale)
+{
+    unsigned r;
+    unsigned i;
+
+    for (i = 0; i < 0x400; i++)
+        soc[0x400 + i] = 0;
+
+    // fprintf(stderr, "%s: 0x%08x %u\n", __func__, addr, scale);
+
+    soc[0x130] = addr;
+    soc[0x131] = scale;
+
+    //fprintf(stderr, "%s: 0x130 -> 0x%08x\n", __func__, (unsigned)soc[0x130]);
+    //fprintf(stderr, "%s: 0x131 -> 0x%08x\n", __func__, (unsigned)soc[0x131]);
+
+    usleep(1);
+
+    (void)soc[0x240];
+    for (r = 10000; r > 0; r--)
+        if (soc[0x240] & 2)
+            break;
+
+    if (!r)
+    {
+        fprintf(stderr, "%s: timeout\n", __func__);
+        return 0;
+    }
+
+    for (i = 0; i < 0x400; i++)
+        buf[i] = soc[0x400 + i];
+
+    return 1;
+}
+
 int main(int argc, char *argv[])
 {
     char s[65536];
     char *p;
     char *start;
     char *end;
-    uint32_t buf[65536];
-    volatile uint32_t *soc;
+    uint32_t buf[1024*1024];
     int fd;
 
     fd = open("/dev/mem", O_RDWR);
@@ -542,6 +579,66 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "read fifo not empty after, status 0x%08x\n", (unsigned)v);
                 goto err;
             }
+	}
+	else if (!strcasecmp(start, "render"))
+	{
+	    uint32_t addr;
+	    unsigned count;
+	    unsigned scale;
+            struct timeval tv, tv0;
+            unsigned i;
+
+	    start = tok(&p);
+	    if (!*start)
+	    {
+		printf("error: read_ddr needs an address\n");
+		goto err;
+	    }
+
+	    addr = strtoul(start, &end, 0);
+	    if (*end)
+	    {
+		printf("error: invalid address \"%s\"\n", start);
+		goto err;
+	    }
+
+	    start = tok(&p);
+	    if (!*start)
+	    {
+		printf("error: read_ddr needs a count\n");
+		goto err;
+	    }
+
+            count = strtoul(start, &end, 0);
+            if (*end || count > sizeof(buf) / sizeof(uint32_t) / 0x400)
+            {
+                fprintf(stderr, "error: invalid count \"%s\"\n", start);
+                goto err;
+            }
+
+	    start = tok(&p);
+            scale = strtoul(start, &end, 0);
+            if (*end || scale > 16384)
+            {
+                printf("error: invalid scale \"%s\"\n", start);
+                goto err;
+            }
+
+            gettimeofday(&tv0, NULL);
+            for (i = 0; i < count; i++)
+            {
+                if (!render_column(buf + i * 0x400, addr, scale + 1))
+                    break;
+
+                addr += scale;
+            }
+            gettimeofday(&tv, NULL);
+
+            fwrite(buf, sizeof(uint32_t), count * 0x400, stdout);
+
+            fprintf(stderr, "render time %u us\n",
+                    (unsigned)((tv.tv_sec - tv0.tv_sec) * 1000000 +
+                               (tv.tv_usec - tv0.tv_usec)));
 	}
 	else if (!strcasecmp(start, "set_gpio"))
 	{

@@ -235,7 +235,7 @@ class SDS(object):
         print "ctrl 0x%08x" % self.read_soc_reg(0x200)
         print
 
-    def mig_capture(self, count, synthetic = 0):
+    def do_mig_capture(self, synthetic = 0):
         self.write_soc_reg(0x230, 0)
         time.sleep(0.1)
 
@@ -254,6 +254,17 @@ class SDS(object):
         print "capture_status 0x%08x" % self.read_soc_reg(0x230)
         time.sleep(0.1)
 
+        print "p2"
+        print "counts 0x%08x" % self.read_soc_reg(0x221)
+        decode_mig_status(self.read_soc_reg(0x220))
+
+        print "p3"
+        print "counts 0x%08x" % self.read_soc_reg(0x229)
+        decode_mig_status(self.read_soc_reg(0x228))
+
+    def mig_capture(self, count, synthetic = 0):
+        self.do_mig_capture(synthetic = synthetic)
+
         t0 = time.time()
         data = self.read_ddr_b(0, count)
         t = time.time()
@@ -262,14 +273,6 @@ class SDS(object):
         if 0:
             data2 = self.read_ddr_b(0, count)
             assert all(data == data2)
-
-        print "p2"
-        print "counts 0x%08x" % self.read_soc_reg(0x221)
-        decode_mig_status(self.read_soc_reg(0x220))
-
-        print "p3"
-        print "counts 0x%08x" % self.read_soc_reg(0x229)
-        decode_mig_status(self.read_soc_reg(0x228))
 
         if 0:
             chunk = 32
@@ -305,6 +308,18 @@ class SDS(object):
             # print data[:512]
 
         return data
+
+    def render(self, addr, count, scale):
+        cmd = 'render 0x%x %u %u' % (addr, count, scale)
+        if 1 or self.verbose:
+            print cmd
+        self.fo.write(cmd + '\n')
+        self.fo.flush()
+
+        a = numpy.fromfile(self.fi, dtype = numpy.uint32,
+                           count = count * 0x400)
+
+        return a
 
     def soc(self, count):
         """Get a SoC bus trace"""

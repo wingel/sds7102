@@ -556,6 +556,8 @@ class MigReaderAddresser(object):
         rd_addr = Signal(intbv(0)[self.addr_width:])
         rd_count = Signal(intbv(0)[self.addr_width+1:])
 
+        self.rd_count = rd_count
+
         hold_count = Signal(intbv(0, 0, 64 + 1))
 
         # It's really not a good idea to look at the mig_port.rd_count

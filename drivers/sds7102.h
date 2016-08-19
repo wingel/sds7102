@@ -8,6 +8,7 @@
 #define FP_REG_DDR_RD_COUNT	0x131
 
 #define FP_REG_RENDER		0x240
+#define FP_REG_RENDER_CLEAR	(1<<0)
 #define FP_REG_RENDER_IDLE	(1<<1)
 
 /* Frontpanel */

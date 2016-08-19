@@ -42,6 +42,8 @@ extern void dma_unmap_area(const void *, size_t, int);
 static DEFINE_MUTEX(scope_mutex);
 static unsigned scope_open_count;
 
+#define TIMEOUT 10000
+
 struct scope_state
 {
 	struct miscdevice *mdev;
@@ -53,8 +55,6 @@ static struct scope_state *static_scope;
 
 static int scope_open(struct inode *inode, struct file *file)
 {
-	pr_info("%s:\n", __func__);
-
 	mutex_lock(&scope_mutex);
 
 	if (scope_open_count) {
@@ -83,33 +83,44 @@ static int scope_render_column(struct scope_state *scope,
 			       uint32_t *buf,
 			       unsigned addr, unsigned count)
 {
+	u32 v;
 	unsigned r;
 	unsigned i;
 
-	// printk(KERN_DEBUG "%s: 0x%08x %u\n", __func__, addr, count);
+	iowrite32(FP_REG_RENDER_CLEAR, scope->regs + FP_REG_RENDER);
+	mb();
 
-	// invalidate cache, no readback
-	for (i = 0; i < 256; i++)
-		iowrite32(0, scope->render_buf + i);
-	// flush cache
+	for (r = TIMEOUT; r > 0; r--) {
+		v = ioread32(scope->regs + FP_REG_RENDER);
+		if (!(v & FP_REG_RENDER_CLEAR))
+			break;
+	}
+	if (!r) {
+		pr_err(DRIVER_NAME ": render clear timeout (0x%x)\n", v);
+		return -ETIMEDOUT;
+	}
+	// printk("clear %u\n", TIMEOUT - r);
 
 	iowrite32(addr, scope->regs + FP_REG_DDR_RD_ADDR);
 	mb();
 	iowrite32(count, scope->regs + FP_REG_DDR_RD_COUNT);
 	mb();
 
-	for (r = 10000; r > 0; r--) {
-		u32 count = ioread32(scope->regs + FP_REG_DDR_RD_COUNT);
-		u32 v = ioread32(scope->regs + FP_REG_RENDER);
-		if (!count && (v & FP_REG_RENDER_IDLE))
+	/* Invalidate cache */
+	dma_map_area(scope->render_buf, RENDER_BUF_SIZE, DMA_FROM_DEVICE);
+
+	for (r = TIMEOUT; r > 0; r--) {
+		v = ioread32(scope->regs + FP_REG_RENDER);
+		if ((v & FP_REG_RENDER_IDLE))
 			break;
 	}
 	if (!r) {
-		pr_err(DRIVER_NAME ": render timeout\n\n");
+		pr_err(DRIVER_NAME ": render timeout (0x%x)\n", v);
 		return -ETIMEDOUT;
 	}
+	// printk("render %u\n", TIMEOUT - r);
 
-	// invalidate cache
+	/* Read samples */
 	for (i = 0; i < 256; i++)
 		buf[i] = ioread32(scope->render_buf + i);
 
@@ -165,7 +176,6 @@ static int scope_render(struct scope_render __user *arg)
 
 static long scope_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-	printk("%s: 0x%x\n", __func__, cmd);
 	switch (cmd) {
 	case IOCTL_SCOPE_RENDER:
 		return scope_render((void __user *)arg);

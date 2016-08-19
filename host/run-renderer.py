@@ -18,7 +18,6 @@ def main():
 
     width = 400
 
-
     # This takes about 220 ms to render, the FPGA starts to limit
     start = 30 * 512; scale = 16384
 
@@ -27,9 +26,12 @@ def main():
 
     start = 115 * 512; scale = 16
     start = 100 * 512; scale = 64
-    start = 30 * 512; scale = 550
+    start = 30 * 512; scale = 500
+    start = 30 * 512; scale = 1000
+    start = 30 * 512; scale = 256
 
-    start = 30 * 512; scale = 2000
+    if len(sys.argv) > 2:
+        scale = int(sys.argv[2], 0)
 
     # 16384 is maximum scale.  why?  16384 * 400 * 4 -> ~26MByte that's not it
 

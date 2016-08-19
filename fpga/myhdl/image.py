@@ -22,6 +22,8 @@ from simple.algo import Algo
 from simple.fifo_ram import FifoRam
 
 from simple.reg import Reg as SimpleReg
+from simple.reg import Port as SimplePort
+from simple.reg import Field as SimpleField
 from simple.reg import RwField as SimpleRwField
 from simple.reg import RoField as SimpleRoField
 from simple.reg import DummyField as SimpleDummyField
@@ -274,7 +276,10 @@ def top(din, init_b, cclk,
     # Test code for renderer
 
     if 1:
-        renderer_rst = ResetSignal(True, True, False)
+        renderer_clr_port = SimplePort(1)
+        renderer_clr = Signal(False)
+        renderer_clr_addr = Signal(intbv(0)[8:])
+
         renderer_idle = Signal(False)
 
         renderer0 = Renderer(system = soc_system,
@@ -298,12 +303,14 @@ def top(din, init_b, cclk,
         insts.append(renderer3.gen())
 
         renderer_reg = SimpleReg(soc_system, 'renderer', "", [
-            SimpleRwField('reset', "", renderer_rst),
+            SimpleField('clear', "", renderer_clr_port),
             SimpleRoField('idle', "", renderer_idle),
             ])
 
         sm.add(renderer_reg.bus(), addr = 0x240)
         insts.append(renderer_reg.gen())
+
+        renderer_bus = SimpleBus(addr_depth = 256, data_width = 32)
 
         @always_seq(soc_clk.posedge, None)
         def renderer_seq():
@@ -312,8 +319,11 @@ def top(din, init_b, cclk,
             renderer2.STROBE.next = 0
             renderer3.STROBE.next = 0
 
+            # Can't feed the renderer it is read or written from the host
             mig_fifo.RD.next = 0
-            if not mig_fifo.RD_EMPTY:
+            if (not renderer_bus.RD and
+                not renderer_bus.WR and
+                not mig_fifo.RD_EMPTY):
                 renderer0.SAMPLE.next = mig_fifo.RD_DATA[8:0]
                 renderer0.STROBE.next = 1
 
@@ -333,7 +343,23 @@ def top(din, init_b, cclk,
                 renderer_idle.next = 1
         insts.append(renderer_seq)
 
-        renderer_bus = SimpleBus(addr_depth = 256, data_width = 32)
+        @always_seq(soc_clk.posedge, None)
+        def renderer_clr_seq():
+            renderer_clr.next = 0
+            renderer_clr_addr.next = 0
+            if renderer_clr_port.WR and renderer_clr_port.WR_DATA != 0:
+                renderer_clr.next = 1
+                renderer_clr_addr.next = 0
+            elif renderer_clr:
+                if renderer_clr_addr.next != 255:
+                    renderer_clr.next = 1
+                    renderer_clr_addr.next = renderer_clr_addr + 1
+
+            renderer_clr_port.RD_DATA.next = 0
+            if renderer_clr_port.RD:
+                renderer_clr_port.RD_DATA.next = renderer_clr
+        insts.append(renderer_clr_seq)
+
         renderer0_bus = renderer0.bus()
         renderer1_bus = renderer1.bus()
         renderer2_bus = renderer2.bus()
@@ -342,25 +368,57 @@ def top(din, init_b, cclk,
         # Combine results from all four renderers
         @always_comb
         def renderer_bus_comb():
-            renderer0_bus.ADDR.next = renderer_bus.ADDR
-            renderer1_bus.ADDR.next = renderer_bus.ADDR
-            renderer2_bus.ADDR.next = renderer_bus.ADDR
-            renderer3_bus.ADDR.next = renderer_bus.ADDR
+            renderer0_bus.WR.next = 0
+            renderer1_bus.WR.next = 0
+            renderer2_bus.WR.next = 0
+            renderer3_bus.WR.next = 0
 
-            renderer0_bus.WR.next = renderer_bus.WR
-            renderer1_bus.WR.next = renderer_bus.WR
-            renderer2_bus.WR.next = renderer_bus.WR
-            renderer3_bus.WR.next = renderer_bus.WR
+            renderer0_bus.ADDR.next = 0
+            renderer1_bus.ADDR.next = 0
+            renderer2_bus.ADDR.next = 0
+            renderer3_bus.ADDR.next = 0
 
-            renderer0_bus.WR_DATA.next = renderer_bus.WR_DATA
-            renderer1_bus.WR_DATA.next = renderer_bus.WR_DATA
-            renderer2_bus.WR_DATA.next = renderer_bus.WR_DATA
-            renderer3_bus.WR_DATA.next = renderer_bus.WR_DATA
+            renderer0_bus.WR_DATA.next = 0
+            renderer1_bus.WR_DATA.next = 0
+            renderer2_bus.WR_DATA.next = 0
+            renderer3_bus.WR_DATA.next = 0
 
-            renderer0_bus.RD.next = renderer_bus.RD
-            renderer1_bus.RD.next = renderer_bus.RD
-            renderer2_bus.RD.next = renderer_bus.RD
-            renderer3_bus.RD.next = renderer_bus.RD
+            renderer0_bus.RD.next = 0
+            renderer1_bus.RD.next = 0
+            renderer2_bus.RD.next = 0
+            renderer3_bus.RD.next = 0
+
+            if renderer_bus_RD or renderer_bus.WR:
+                renderer0_bus.ADDR.next = renderer_bus.ADDR
+                renderer1_bus.ADDR.next = renderer_bus.ADDR
+                renderer2_bus.ADDR.next = renderer_bus.ADDR
+                renderer3_bus.ADDR.next = renderer_bus.ADDR
+
+                renderer0_bus.WR.next = renderer_bus.WR
+                renderer1_bus.WR.next = renderer_bus.WR
+                renderer2_bus.WR.next = renderer_bus.WR
+                renderer3_bus.WR.next = renderer_bus.WR
+
+                renderer0_bus.WR_DATA.next = renderer_bus.WR_DATA
+                renderer1_bus.WR_DATA.next = renderer_bus.WR_DATA
+                renderer2_bus.WR_DATA.next = renderer_bus.WR_DATA
+                renderer3_bus.WR_DATA.next = renderer_bus.WR_DATA
+
+                renderer0_bus.RD.next = renderer_bus.RD
+                renderer1_bus.RD.next = renderer_bus.RD
+                renderer2_bus.RD.next = renderer_bus.RD
+                renderer3_bus.RD.next = renderer_bus.RD
+
+            elif renderer_clr:
+                renderer0_bus.ADDR.next = renderer_clr_addr
+                renderer1_bus.ADDR.next = renderer_clr_addr
+                renderer2_bus.ADDR.next = renderer_clr_addr
+                renderer3_bus.ADDR.next = renderer_clr_addr
+
+                renderer0_bus.WR.next = 1
+                renderer1_bus.WR.next = 1
+                renderer2_bus.WR.next = 1
+                renderer3_bus.WR.next = 1
 
             renderer_bus.RD_DATA.next[16:0] = renderer0_bus.RD_DATA + renderer1_bus.RD_DATA
             renderer_bus.RD_DATA.next[32:16] = renderer2_bus.RD_DATA + renderer3_bus.RD_DATA

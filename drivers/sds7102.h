@@ -4,6 +4,12 @@
 #define SDS7102_REG_BASE 0x38000000
 #define SDS7102_REG_SIZE 4096
 
+#define FP_REG_DDR_RD_ADDR	0x130
+#define FP_REG_DDR_RD_COUNT	0x131
+
+#define FP_REG_RENDER		0x240
+#define FP_REG_RENDER_IDLE	(1<<1)
+
 /* Frontpanel */
 
 #define FP_NR_KEYS	64
@@ -41,5 +47,9 @@
  * address */
 #define ALGO_MEM_BASE	(SDS7102_REG_BASE + 0x40000)
 #define ALGO_MEM_SIZE	(4<<16)
+
+/* Rendering buffer */
+#define RENDER_BUF_BASE	(SDS7102_REG_BASE + 0x1000)
+#define RENDER_BUF_SIZE	0x400
 
 #endif /* _SDS7102_H */

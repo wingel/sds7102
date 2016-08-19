@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <fcntl.h>
@@ -9,6 +10,10 @@
 
 #include <sys/time.h>
 #include <sys/mman.h>
+#include <sys/ioctl.h>
+
+#include <sds7102.h>
+#include <scope.h>
 
 #include "reg.h"
 
@@ -72,6 +77,7 @@ static char *tok(char **ps)
 }
 
 static volatile uint32_t *soc;
+int scope_fd;
 
 int render_column(uint32_t *buf, unsigned addr, unsigned scale)
 {
@@ -122,6 +128,9 @@ int main(int argc, char *argv[])
     soc = mmap(NULL, 64*1024*1024, PROT_READ | PROT_WRITE, MAP_SHARED, fd,
                0x38000000);
     assert(soc != MAP_FAILED);
+
+    scope_fd = open("/dev/scope", O_RDWR);
+    assert(scope_fd != -1);
 
     while (fgets(s, sizeof(s), stdin) != NULL)
     {
@@ -625,12 +634,26 @@ int main(int argc, char *argv[])
             }
 
             gettimeofday(&tv0, NULL);
-            for (i = 0; i < count; i++)
+            if (0)
             {
-                if (!render_column(buf + i * 0x100, addr, scale + 1))
-                    break;
+                for (i = 0; i < count; i++)
+                {
+                    if (!render_column(buf + i * 0x100, addr, scale + 1))
+                        break;
 
-                addr += scale;
+                    addr += scale;
+                }
+            }
+            else
+            {
+                struct scope_render render;
+                render.addr = addr;
+                render.count = count;
+                render.scale = scale;
+                render.buf = buf;
+
+                if (ioctl(scope_fd, IOCTL_SCOPE_RENDER, &render))
+                    perror("rendering failed");
             }
             gettimeofday(&tv, NULL);
 

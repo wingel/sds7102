@@ -9,6 +9,7 @@ CC := $(CROSS_COMPILE)gcc
 
 CFLAGS := -Wall
 CFLAGS += -O2
+CFLAGS += -I../drivers
 
 TARGETS :=
 TARGETS += activity

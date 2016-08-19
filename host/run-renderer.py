@@ -18,16 +18,18 @@ def main():
 
     width = 400
 
-    start = 115 * 512; scale = 16
-    start = 100 * 512; scale = 64
-
-    # This takes about 190 ms to render and is not limited by the FPGA
-    start = 30 * 512; scale = 8000
 
     # This takes about 220 ms to render, the FPGA starts to limit
     start = 30 * 512; scale = 16384
 
+    # This takes about 190 ms to render and is not limited by the FPGA
+    start = 30 * 512; scale = 8000
+
+    start = 115 * 512; scale = 16
+    start = 100 * 512; scale = 64
     start = 30 * 512; scale = 550
+
+    start = 30 * 512; scale = 2000
 
     # 16384 is maximum scale.  why?  16384 * 400 * 4 -> ~26MByte that's not it
 
@@ -35,6 +37,9 @@ def main():
 
     if 1:
         data = sds.render(start, width, scale)
+
+        hd(data[:64])
+
     else:
         data = []
         for x in range(width):

@@ -31,5 +31,6 @@ obj-m += gpios.o
 obj-m += regs.o
 obj-m += test-soc.o
 obj-m += frontpanel.o
+obj-m += scope.o
 
 endif

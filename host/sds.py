@@ -317,7 +317,7 @@ class SDS(object):
         self.fo.flush()
 
         a = numpy.fromfile(self.fi, dtype = numpy.uint32,
-                           count = count * 0x400)
+                           count = count * 0x100)
 
         return a
 

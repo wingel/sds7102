@@ -333,10 +333,40 @@ def top(din, init_b, cclk,
                 renderer_idle.next = 1
         insts.append(renderer_seq)
 
-        sm.add(renderer0.bus(), addr = 0x400)
-        sm.add(renderer1.bus(), addr = 0x500)
-        sm.add(renderer2.bus(), addr = 0x600)
-        sm.add(renderer3.bus(), addr = 0x700)
+        renderer_bus = SimpleBus(addr_depth = 256, data_width = 32)
+        renderer0_bus = renderer0.bus()
+        renderer1_bus = renderer1.bus()
+        renderer2_bus = renderer2.bus()
+        renderer3_bus = renderer3.bus()
+
+        # Combine results from all four renderers
+        @always_comb
+        def renderer_bus_comb():
+            renderer0_bus.ADDR.next = renderer_bus.ADDR
+            renderer1_bus.ADDR.next = renderer_bus.ADDR
+            renderer2_bus.ADDR.next = renderer_bus.ADDR
+            renderer3_bus.ADDR.next = renderer_bus.ADDR
+
+            renderer0_bus.WR.next = renderer_bus.WR
+            renderer1_bus.WR.next = renderer_bus.WR
+            renderer2_bus.WR.next = renderer_bus.WR
+            renderer3_bus.WR.next = renderer_bus.WR
+
+            renderer0_bus.WR_DATA.next = renderer_bus.WR_DATA
+            renderer1_bus.WR_DATA.next = renderer_bus.WR_DATA
+            renderer2_bus.WR_DATA.next = renderer_bus.WR_DATA
+            renderer3_bus.WR_DATA.next = renderer_bus.WR_DATA
+
+            renderer0_bus.RD.next = renderer_bus.RD
+            renderer1_bus.RD.next = renderer_bus.RD
+            renderer2_bus.RD.next = renderer_bus.RD
+            renderer3_bus.RD.next = renderer_bus.RD
+
+            renderer_bus.RD_DATA.next[16:0] = renderer0_bus.RD_DATA + renderer1_bus.RD_DATA
+            renderer_bus.RD_DATA.next[32:16] = renderer2_bus.RD_DATA + renderer3_bus.RD_DATA
+        insts.append(renderer_bus_comb)
+
+        sm.add(renderer_bus, addr = 0x400)
 
     ####################################################################
     # ADC bus

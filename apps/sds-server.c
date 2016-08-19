@@ -78,7 +78,7 @@ int render_column(uint32_t *buf, unsigned addr, unsigned scale)
     unsigned r;
     unsigned i;
 
-    for (i = 0; i < 0x400; i++)
+    for (i = 0; i < 0x100; i++)
         soc[0x400 + i] = 0;
 
     // fprintf(stderr, "%s: 0x%08x %u\n", __func__, addr, scale);
@@ -102,7 +102,7 @@ int render_column(uint32_t *buf, unsigned addr, unsigned scale)
         return 0;
     }
 
-    for (i = 0; i < 0x400; i++)
+    for (i = 0; i < 0x100; i++)
         buf[i] = soc[0x400 + i];
 
     return 1;
@@ -610,7 +610,7 @@ int main(int argc, char *argv[])
 	    }
 
             count = strtoul(start, &end, 0);
-            if (*end || count > sizeof(buf) / sizeof(uint32_t) / 0x400)
+            if (*end || count > sizeof(buf) / sizeof(uint32_t) / 0x100)
             {
                 fprintf(stderr, "error: invalid count \"%s\"\n", start);
                 goto err;
@@ -627,14 +627,14 @@ int main(int argc, char *argv[])
             gettimeofday(&tv0, NULL);
             for (i = 0; i < count; i++)
             {
-                if (!render_column(buf + i * 0x400, addr, scale + 1))
+                if (!render_column(buf + i * 0x100, addr, scale + 1))
                     break;
 
                 addr += scale;
             }
             gettimeofday(&tv, NULL);
 
-            fwrite(buf, sizeof(uint32_t), count * 0x400, stdout);
+            fwrite(buf, sizeof(uint32_t), count * 0x100, stdout);
 
             fprintf(stderr, "render time %u us\n",
                     (unsigned)((tv.tv_sec - tv0.tv_sec) * 1000000 +

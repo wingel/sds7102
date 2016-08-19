@@ -57,14 +57,14 @@ def main():
             else:
                 raise os.TimeoutError()
 
-            data.append(sds.read_soc_regs(0x400, 0x400))
+            data.append(sds.read_soc_regs(0x400, 0x100))
 
-    data = numpy.array(data).reshape((width, 4, 0x100))
+    data = numpy.array(data).reshape((width, 0x100))
 
     z = numpy.zeros(256, dtype = numpy.uint8)
 
     for aa in data:
-        aa = [ aa[0] + aa[1], aa[2] + aa[3] ]
+        aa = [ aa & 0xffff, (aa >> 16) & 0xffff ]
 
         for i in range(len(aa)):
             a = aa[i][::-1]

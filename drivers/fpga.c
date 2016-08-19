@@ -5,7 +5,9 @@
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation version 2.
- *
+ */
+
+/*
  * When the device is opened the FPGA is initialized by pulling PROG_B
  * low and then waiting for INIT_B to go hi.  Userspace then writes
  * the bitstream to the device using CCLK and DIN.  When the device is
@@ -31,7 +33,7 @@
 #include <mach/gpio-samsung.h>
 #include <plat/gpio-cfg.h>
 
-#define DRIVER_NAME "xilinx-slave-serial"
+#define DRIVER_NAME "sds7102-fpga"
 #define DEVICE_NAME "fpga"
 
 #define FPGA_PROG_B	S3C2410_GPK(7)
@@ -188,6 +190,8 @@ static int fpga_release(struct inode *inode, struct file *file)
 	unsigned long timeout;
 	int r = 0;
 
+	mutex_lock(&fpga_mutex);
+
 	printk("INIT_B %u\n", gpio_get_value(FPGA_INIT_B));
 	printk("DONE %u\n", gpio_get_value(FPGA_DONE));
 
@@ -219,17 +223,20 @@ static int fpga_release(struct inode *inode, struct file *file)
 			fpga_pin_requested[n] = 0;
 		}
 	}
+
 	fpga_open_count--;
+
+	mutex_unlock(&fpga_mutex);
 
 	return r;
 }
 
 static const struct file_operations fpga_fileops = {
-    .owner = THIS_MODULE,
-    .open = fpga_open,
-    .release = fpga_release,
-    .write = fpga_write,
-    .llseek = no_llseek,
+	.owner 		= THIS_MODULE,
+	.open 		= fpga_open,
+	.release 	= fpga_release,
+	.write 		= fpga_write,
+	.llseek 	= no_llseek,
 };
 
 static int __init fpga_init(void)
@@ -238,7 +245,7 @@ static int __init fpga_init(void)
 
 	fpga_mdev = kzalloc(sizeof(*fpga_mdev), GFP_KERNEL);
 	if (!fpga_mdev) {
-		pr_err("Misc device allocation failed\n");
+		pr_err(DRIVER_NAME ": misc device allocation failed\n");
 		return -ENOMEM;
 	}
 
@@ -246,9 +253,8 @@ static int __init fpga_init(void)
 	fpga_mdev->name = "fpga";
 	fpga_mdev->fops = &fpga_fileops;
 	r = misc_register(fpga_mdev);
-	if (!r) {
-		printk("fpga device registered\n");
-	}
+	if (!r)
+		printk(DEVICE_NAME " device registered\n");
 
 	return r;
 }
@@ -262,5 +268,5 @@ module_init(fpga_init);
 module_exit(fpga_cleanup);
 
 MODULE_AUTHOR("Christer Weinigel <christer@weinigel.se>");
-MODULE_DESCRIPTION("Xilinx Slave Serial Driver for SDS7102");
+MODULE_DESCRIPTION("SDS7102 FPGA slave serial configuration driver");
 MODULE_LICENSE("GPL v2");

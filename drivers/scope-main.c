@@ -19,9 +19,19 @@
 #include <linux/mutex.h>
 #include <linux/uaccess.h>
 #include <linux/sched.h>
+#include <linux/dma-mapping.h>
+
+#include <asm/cacheflush.h>
 
 #include <mach/gpio-samsung.h>
 #include <plat/gpio-cfg.h>
+
+#include <asm/glue-cache.h>
+
+#define dma_map_area		__glue(_CACHE,_dma_map_area)
+#define dma_unmap_area 		__glue(_CACHE,_dma_unmap_area)
+extern void dma_map_area(const void *, size_t, int);
+extern void dma_unmap_area(const void *, size_t, int);
 
 #include "sds7102.h"
 #include "scope.h"

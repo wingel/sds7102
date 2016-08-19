@@ -33,4 +33,6 @@ obj-m += test-soc.o
 obj-m += frontpanel.o
 obj-m += scope.o
 
+scope-objs := scope-main.o dma-map.o
+
 endif

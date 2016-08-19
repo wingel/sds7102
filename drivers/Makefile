@@ -30,6 +30,6 @@ obj-m += fpga.o
 obj-m += gpios.o
 obj-m += regs.o
 obj-m += test-soc.o
-obj-m += sds7102-frontpanel.o
+obj-m += frontpanel.o
 
 endif
